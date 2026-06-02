@@ -1,53 +1,58 @@
 'use client'
 
-import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
-import { 
-  BookOpen, 
-  MessageSquare, 
-  FileText, 
-  Trophy, 
-  Users, 
+import {
+  BookOpen,
+  MessageSquare,
+  FileText,
+  Trophy,
+  Users,
   ArrowRight,
   Sparkles,
   TrendingUp,
   Clock,
   Star,
-  ChevronRight
+  ChevronRight,
+  Flame,
 } from 'lucide-react'
 import Link from 'next/link'
 
 export default function DashboardPage() {
   return (
-    <div className="space-y-8">
-      {/* Welcome Section */}
-      <div className="relative overflow-hidden bg-primary rounded-2xl p-8 md:p-10">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.15),transparent_50%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(255,255,255,0.1),transparent_50%)]" />
+    <div className="space-y-7">
+
+      {/* ── Welcome Banner ───────────────────────────────── */}
+      <div className="relative overflow-hidden bg-primary rounded-2xl p-7 md:p-10">
+        {/* Overlays */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_25%_20%,rgba(255,255,255,0.18),transparent_55%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_75%_80%,rgba(255,255,255,0.10),transparent_55%)]" />
+        <div className="absolute -top-8 -right-8 w-40 h-40 bg-white/10 rounded-full blur-2xl" />
+        <div className="absolute -bottom-8 -left-8 w-32 h-32 bg-white/8 rounded-full blur-2xl" />
+
         <div className="relative z-10">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
             <div>
-              <div className="inline-flex items-center gap-2 bg-white/20 text-white px-3 py-1 rounded-full text-sm font-medium mb-4">
-                <Sparkles className="w-4 h-4" />
-                <span>Welcome back!</span>
+              <div className="inline-flex items-center gap-2 bg-white/20 text-white px-3 py-1.5 rounded-full text-xs font-semibold mb-4">
+                <Sparkles className="w-3.5 h-3.5 animate-spin-slow" />
+                Welcome back, Teacher!
               </div>
-              <h1 className="text-3xl md:text-4xl font-bold text-primary-foreground mb-2">
+              <h1 className="text-2xl md:text-3xl font-bold text-primary-foreground mb-2 tracking-tight">
                 Ready to continue learning?
               </h1>
-              <p className="text-primary-foreground/80 max-w-xl">
+              <p className="text-primary-foreground/75 text-sm max-w-md leading-relaxed">
                 Pick up where you left off or explore new CBC teaching strategies with your AI coach.
               </p>
             </div>
-            <div className="flex gap-3 flex-wrap">
+            <div className="flex gap-2.5 flex-wrap shrink-0">
               <Link href="/dashboard/ai-coach">
-                <Button size="lg" variant="secondary" className="gap-2 shadow-lg font-semibold">
+                <Button size="sm" variant="secondary" className="gap-2 shadow-lg font-semibold rounded-xl px-5">
                   <MessageSquare className="w-4 h-4" />
-                  Chat with AI Coach
+                  AI Coach
                 </Button>
               </Link>
               <Link href="/dashboard/modules">
-                <Button size="lg" variant="outline" className="gap-2 bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white">
+                <Button size="sm" variant="outline" className="gap-2 bg-white/10 border-white/25 text-white hover:bg-white/20 hover:text-white hover:border-white/30 rounded-xl px-5">
                   <BookOpen className="w-4 h-4" />
                   Browse Modules
                 </Button>
@@ -57,199 +62,192 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Quick Stats */}
+      {/* ── Quick Stats ──────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="p-6 border-border/50 hover:shadow-lg hover:shadow-primary/5 transition-all">
-          <div className="flex items-start justify-between">
+
+        <div className="glass rounded-2xl p-5 hover:shadow-lg hover:shadow-primary/8 hover:-translate-y-0.5 transition-all duration-200">
+          <div className="flex items-start justify-between mb-4">
             <div>
-              <p className="text-sm text-muted-foreground mb-1">Modules Completed</p>
-              <p className="text-3xl font-bold text-primary">2</p>
+              <p className="text-xs text-muted-foreground mb-1 font-medium">Modules Completed</p>
+              <p className="text-3xl font-bold gradient-text tabular-nums">2</p>
               <p className="text-xs text-muted-foreground mt-1">of 6 modules</p>
             </div>
-            <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center">
-              <BookOpen className="w-6 h-6 text-primary" />
+            <div className="w-11 h-11 bg-gradient-to-br from-primary/20 to-primary/5 rounded-xl flex items-center justify-center shrink-0">
+              <BookOpen className="w-5 h-5 text-primary" />
             </div>
           </div>
-          <Progress value={33} className="mt-4 h-2" />
-        </Card>
+          <Progress value={33} className="h-1.5" />
+        </div>
 
-        <Card className="p-6 border-border/50 hover:shadow-lg hover:shadow-primary/5 transition-all">
-          <div className="flex items-start justify-between">
+        <div className="glass rounded-2xl p-5 hover:shadow-lg hover:shadow-accent/8 hover:-translate-y-0.5 transition-all duration-200">
+          <div className="flex items-start justify-between mb-4">
             <div>
-              <p className="text-sm text-muted-foreground mb-1">AI Chat Sessions</p>
-              <p className="text-3xl font-bold text-accent">12</p>
+              <p className="text-xs text-muted-foreground mb-1 font-medium">AI Chat Sessions</p>
+              <p className="text-3xl font-bold text-accent tabular-nums">12</p>
               <p className="text-xs text-muted-foreground mt-1">this week</p>
             </div>
-            <div className="w-12 h-12 bg-accent/10 rounded-xl flex items-center justify-center">
-              <Sparkles className="w-6 h-6 text-accent" />
+            <div className="w-11 h-11 bg-gradient-to-br from-accent/20 to-accent/5 rounded-xl flex items-center justify-center shrink-0">
+              <Sparkles className="w-5 h-5 text-accent" />
             </div>
           </div>
-          <div className="flex items-center gap-1 mt-4 text-xs text-primary">
-            <TrendingUp className="w-3 h-3" />
-            <span>+25% from last week</span>
+          <div className="flex items-center gap-1.5 text-xs text-primary font-medium">
+            <TrendingUp className="w-3.5 h-3.5" />
+            +25% from last week
           </div>
-        </Card>
+        </div>
 
-        <Card className="p-6 border-border/50 hover:shadow-lg hover:shadow-primary/5 transition-all">
-          <div className="flex items-start justify-between">
+        <div className="glass rounded-2xl p-5 hover:shadow-lg hover:shadow-primary/8 hover:-translate-y-0.5 transition-all duration-200">
+          <div className="flex items-start justify-between mb-4">
             <div>
-              <p className="text-sm text-muted-foreground mb-1">Community Posts</p>
-              <p className="text-3xl font-bold text-primary">5</p>
+              <p className="text-xs text-muted-foreground mb-1 font-medium">Community Posts</p>
+              <p className="text-3xl font-bold gradient-text tabular-nums">5</p>
               <p className="text-xs text-muted-foreground mt-1">contributions</p>
             </div>
-            <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center">
-              <Users className="w-6 h-6 text-primary" />
+            <div className="w-11 h-11 bg-gradient-to-br from-primary/20 to-primary/5 rounded-xl flex items-center justify-center shrink-0">
+              <Users className="w-5 h-5 text-primary" />
             </div>
           </div>
-          <div className="flex items-center gap-1 mt-4 text-xs text-muted-foreground">
-            <Star className="w-3 h-3 fill-accent text-accent" />
-            <span>Active contributor</span>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Star className="w-3.5 h-3.5 fill-accent text-accent" />
+            Active contributor
           </div>
-        </Card>
+        </div>
 
-        <Card className="p-6 border-border/50 hover:shadow-lg hover:shadow-primary/5 transition-all">
-          <div className="flex items-start justify-between">
+        <div className="glass rounded-2xl p-5 hover:shadow-lg hover:shadow-accent/8 hover:-translate-y-0.5 transition-all duration-200">
+          <div className="flex items-start justify-between mb-4">
             <div>
-              <p className="text-sm text-muted-foreground mb-1">Badges Earned</p>
-              <p className="text-3xl font-bold text-accent">3</p>
+              <p className="text-xs text-muted-foreground mb-1 font-medium">Badges Earned</p>
+              <p className="text-3xl font-bold text-accent tabular-nums">3</p>
               <p className="text-xs text-muted-foreground mt-1">achievements</p>
             </div>
-            <div className="w-12 h-12 bg-accent/10 rounded-xl flex items-center justify-center">
-              <Trophy className="w-6 h-6 text-accent" />
+            <div className="w-11 h-11 bg-gradient-to-br from-accent/20 to-accent/5 rounded-xl flex items-center justify-center shrink-0">
+              <Trophy className="w-5 h-5 text-accent" />
             </div>
           </div>
-          <div className="flex gap-1 mt-4">
-            <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center">
-              <span className="text-[10px] text-primary-foreground">1</span>
-            </div>
-            <div className="w-6 h-6 bg-accent rounded-full flex items-center justify-center">
-              <span className="text-[10px] text-accent-foreground">2</span>
-            </div>
-            <div className="w-6 h-6 bg-primary/20 rounded-full flex items-center justify-center">
-              <span className="text-[10px] text-primary">3</span>
-            </div>
+          <div className="flex gap-1.5">
+            {['bg-primary', 'bg-accent', 'bg-primary/30'].map((bg, i) => (
+              <div key={i} className={`w-6 h-6 ${bg} rounded-full flex items-center justify-center`}>
+                <span className="text-[9px] font-bold text-white">{i + 1}</span>
+              </div>
+            ))}
           </div>
-        </Card>
+        </div>
+
       </div>
 
-      {/* Continue Learning */}
+      {/* ── Continue Learning ────────────────────────────── */}
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold">Continue Learning</h2>
-          <Link href="/dashboard/modules" className="text-sm text-primary hover:underline flex items-center gap-1">
-            View all <ChevronRight className="w-4 h-4" />
+          <h2 className="text-base font-bold tracking-tight">Continue Learning</h2>
+          <Link href="/dashboard/modules" className="text-xs text-primary hover:text-primary/80 font-semibold flex items-center gap-0.5 transition-colors">
+            View all <ChevronRight className="w-3.5 h-3.5" />
           </Link>
         </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Card className="p-6 border-border/50 hover:shadow-lg transition-all group">
-            <div className="flex gap-4">
-              <div className="w-16 h-16 bg-primary/10 rounded-xl flex items-center justify-center shrink-0">
-                <BookOpen className="w-8 h-8 text-primary" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">In Progress</span>
-                </div>
-                <h3 className="font-semibold mb-1 truncate">CBC Assessment Strategies</h3>
-                <p className="text-sm text-muted-foreground mb-3">Master formative and summative assessment techniques</p>
-                <div className="flex items-center gap-4">
-                  <Progress value={65} className="flex-1 h-2" />
-                  <span className="text-sm font-medium text-primary">65%</span>
-                </div>
-              </div>
-            </div>
-            <Link href="/dashboard/modules" className="absolute inset-0" />
-          </Card>
 
-          <Card className="p-6 border-border/50 hover:shadow-lg transition-all group">
+          <div className="glass rounded-2xl p-5 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 relative cursor-pointer group">
             <div className="flex gap-4">
-              <div className="w-16 h-16 bg-accent/10 rounded-xl flex items-center justify-center shrink-0">
-                <FileText className="w-8 h-8 text-accent" />
+              <div className="w-14 h-14 bg-gradient-to-br from-primary/20 to-primary/5 rounded-xl flex items-center justify-center shrink-0 group-hover:from-primary/30 transition-all">
+                <BookOpen className="w-7 h-7 text-primary" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs bg-accent/10 text-accent px-2 py-0.5 rounded-full font-medium">Recommended</span>
-                </div>
-                <h3 className="font-semibold mb-1 truncate">Learner-Centered Pedagogy</h3>
-                <p className="text-sm text-muted-foreground mb-3">Implement student-focused teaching approaches</p>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Clock className="w-4 h-4" />
-                  <span>4 hours</span>
-                  <span className="mx-1">-</span>
-                  <span>8 lessons</span>
+                <span className="text-xs bg-primary/10 text-primary px-2.5 py-1 rounded-full font-semibold inline-block mb-2">In Progress</span>
+                <h3 className="font-semibold text-sm mb-1 truncate tracking-tight">CBC Assessment Strategies</h3>
+                <p className="text-xs text-muted-foreground mb-3 leading-relaxed">Master formative and summative assessment techniques</p>
+                <div className="flex items-center gap-3">
+                  <Progress value={65} className="flex-1 h-1.5" />
+                  <span className="text-xs font-semibold text-primary tabular-nums">65%</span>
                 </div>
               </div>
             </div>
-            <Link href="/dashboard/modules" className="absolute inset-0" />
-          </Card>
+            <Link href="/dashboard/modules" className="absolute inset-0" aria-label="Continue CBC Assessment Strategies" />
+          </div>
+
+          <div className="glass rounded-2xl p-5 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 relative cursor-pointer group">
+            <div className="flex gap-4">
+              <div className="w-14 h-14 bg-gradient-to-br from-accent/20 to-accent/5 rounded-xl flex items-center justify-center shrink-0 group-hover:from-accent/30 transition-all">
+                <FileText className="w-7 h-7 text-accent" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <span className="text-xs bg-accent/10 text-accent px-2.5 py-1 rounded-full font-semibold inline-block mb-2">Recommended</span>
+                <h3 className="font-semibold text-sm mb-1 truncate tracking-tight">Learner-Centered Pedagogy</h3>
+                <p className="text-xs text-muted-foreground mb-3 leading-relaxed">Implement student-focused teaching approaches effectively</p>
+                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                  <Clock className="w-3.5 h-3.5 shrink-0" />
+                  <span>4 hours · 8 lessons</span>
+                </div>
+              </div>
+            </div>
+            <Link href="/dashboard/modules" className="absolute inset-0" aria-label="Start Learner-Centered Pedagogy" />
+          </div>
+
         </div>
       </div>
 
-      {/* Quick Actions */}
+      {/* ── Quick Actions ────────────────────────────────── */}
       <div>
-        <h2 className="text-xl font-bold mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Link href="/dashboard/ai-coach">
-            <Card className="p-5 border-border/50 hover:shadow-lg hover:border-primary/30 transition-all cursor-pointer group">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                  <Sparkles className="w-6 h-6 text-primary" />
+        <h2 className="text-base font-bold tracking-tight mb-4">Quick Actions</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {[
+            { href: '/dashboard/ai-coach',    icon: Sparkles,    color: 'from-primary/18 to-primary/5 text-primary',  label: 'AI Coach',      sub: 'Get instant help'   },
+            { href: '/dashboard/assessment',  icon: FileText,    color: 'from-accent/18 to-accent/5 text-accent',     label: 'Assessment',    sub: 'Personalise path'   },
+            { href: '/dashboard/community',   icon: Users,       color: 'from-primary/18 to-primary/5 text-primary',  label: 'Community',     sub: 'Join discussions'   },
+            { href: '/dashboard/achievements',icon: Trophy,      color: 'from-accent/18 to-accent/5 text-accent',     label: 'Achievements',  sub: 'View badges'        },
+          ].map(({ href, icon: Icon, color, label, sub }) => (
+            <Link key={href} href={href}>
+              <div className="glass rounded-2xl p-4 hover:shadow-md hover:-translate-y-0.5 hover:shadow-primary/5 transition-all duration-200 cursor-pointer group">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 bg-gradient-to-br ${color} rounded-xl flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-200`}>
+                    <Icon className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm tracking-tight">{label}</p>
+                    <p className="text-xs text-muted-foreground truncate">{sub}</p>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all duration-200 shrink-0" />
                 </div>
-                <div>
-                  <h3 className="font-semibold">AI Coach</h3>
-                  <p className="text-sm text-muted-foreground">Get instant help</p>
-                </div>
-                <ArrowRight className="w-5 h-5 text-muted-foreground ml-auto group-hover:text-primary group-hover:translate-x-1 transition-all" />
               </div>
-            </Card>
-          </Link>
-
-          <Link href="/dashboard/assessment">
-            <Card className="p-5 border-border/50 hover:shadow-lg hover:border-primary/30 transition-all cursor-pointer group">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-accent/10 rounded-xl flex items-center justify-center group-hover:bg-accent/20 transition-colors">
-                  <FileText className="w-6 h-6 text-accent" />
-                </div>
-                <div>
-                  <h3 className="font-semibold">Assessment</h3>
-                  <p className="text-sm text-muted-foreground">Personalize path</p>
-                </div>
-                <ArrowRight className="w-5 h-5 text-muted-foreground ml-auto group-hover:text-primary group-hover:translate-x-1 transition-all" />
-              </div>
-            </Card>
-          </Link>
-
-          <Link href="/dashboard/community">
-            <Card className="p-5 border-border/50 hover:shadow-lg hover:border-primary/30 transition-all cursor-pointer group">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                  <Users className="w-6 h-6 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-semibold">Community</h3>
-                  <p className="text-sm text-muted-foreground">Join discussions</p>
-                </div>
-                <ArrowRight className="w-5 h-5 text-muted-foreground ml-auto group-hover:text-primary group-hover:translate-x-1 transition-all" />
-              </div>
-            </Card>
-          </Link>
-
-          <Link href="/dashboard/achievements">
-            <Card className="p-5 border-border/50 hover:shadow-lg hover:border-primary/30 transition-all cursor-pointer group">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-accent/10 rounded-xl flex items-center justify-center group-hover:bg-accent/20 transition-colors">
-                  <Trophy className="w-6 h-6 text-accent" />
-                </div>
-                <div>
-                  <h3 className="font-semibold">Achievements</h3>
-                  <p className="text-sm text-muted-foreground">View badges</p>
-                </div>
-                <ArrowRight className="w-5 h-5 text-muted-foreground ml-auto group-hover:text-primary group-hover:translate-x-1 transition-all" />
-              </div>
-            </Card>
-          </Link>
+            </Link>
+          ))}
         </div>
       </div>
+
+      {/* ── Daily Streak ─────────────────────────────────── */}
+      <div className="glass rounded-2xl p-5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-accent/20 to-accent/5 rounded-xl flex items-center justify-center">
+              <Flame className="w-5 h-5 text-accent" />
+            </div>
+            <div>
+              <p className="font-semibold text-sm tracking-tight">7-Day Learning Streak</p>
+              <p className="text-xs text-muted-foreground">Keep it up! You're on a roll.</p>
+            </div>
+          </div>
+          <Link href="/dashboard/achievements">
+            <Button size="sm" variant="outline" className="text-xs rounded-xl border-border/60 hover:border-primary/40 hover:text-primary transition-all">
+              View All
+            </Button>
+          </Link>
+        </div>
+
+        <div className="flex gap-1.5 mt-4">
+          {['M','T','W','T','F','S','S'].map((day, i) => (
+            <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
+              <div className={`w-full aspect-square rounded-lg flex items-center justify-center text-[10px] font-bold transition-all ${
+                i < 5
+                  ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/20'
+                  : 'bg-muted text-muted-foreground'
+              }`}>
+                {i < 5 ? '✓' : day}
+              </div>
+              <span className="text-[10px] text-muted-foreground">{day}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
     </div>
   )
 }

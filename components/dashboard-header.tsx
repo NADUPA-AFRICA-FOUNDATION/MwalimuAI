@@ -17,23 +17,23 @@ export function DashboardHeader({ userName, onLogout, onMenuToggle }: DashboardH
           {onMenuToggle && (
             <button
               onClick={onMenuToggle}
-              className="md:hidden p-2 hover:bg-muted rounded-xl"
+              className="md:hidden p-2 hover:bg-muted rounded-xl transition-colors"
               aria-label="Toggle menu"
             >
               <Menu className="w-5 h-5" />
             </button>
           )}
-          <Link href="/dashboard" className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/25">
+          <Link href="/dashboard" className="flex items-center gap-3 group">
+            <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/25 group-hover:scale-105 group-hover:shadow-primary/40 transition-all duration-200">
               <GraduationCap className="w-5 h-5 text-primary-foreground" />
             </div>
             <span className="font-bold text-lg hidden sm:inline">Mwalimu AI</span>
           </Link>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <NotificationCenter />
-          <div className="flex items-center gap-3 px-3 py-1.5 bg-muted/50 rounded-xl">
+          <div className="flex items-center gap-3 px-3 py-1.5 bg-muted/50 hover:bg-muted rounded-xl transition-colors cursor-default">
             <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
               <span className="font-semibold text-sm text-primary">
                 {userName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
@@ -45,7 +45,7 @@ export function DashboardHeader({ userName, onLogout, onMenuToggle }: DashboardH
             variant="ghost"
             size="sm"
             onClick={onLogout}
-            className="text-muted-foreground hover:text-foreground hover:bg-muted rounded-xl"
+            className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl transition-all duration-200"
           >
             <LogOut className="w-4 h-4 sm:mr-2" />
             <span className="hidden sm:inline">Logout</span>

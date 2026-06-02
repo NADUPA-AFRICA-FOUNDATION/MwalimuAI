@@ -23,14 +23,22 @@ Your role is to:
 Always be supportive, practical, and encouraging. Reference real classroom scenarios when possible.`
 
 export async function POST(req: Request) {
+  if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
+    return Response.json(
+      { error: 'AI service not configured. Please add GOOGLE_GENERATIVE_AI_API_KEY to .env.local' },
+      { status: 503 }
+    )
+  }
+
   const { messages } = await req.json()
 
   const result = streamText({
-    model: google('gemini-2.0-flash'),
+    model: google('gemini-1.5-flash'),
     system: systemPrompt,
-    messages: convertToModelMessages(messages),
+    messages: await convertToModelMessages(messages),
     temperature: 0.7,
-    maxTokens: 1000,
+    maxOutputTokens: 1000,
+    maxRetries: 0, // fail fast — retrying quota errors wastes time
   })
 
   return result.toUIMessageStreamResponse()

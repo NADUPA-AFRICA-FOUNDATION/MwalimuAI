@@ -29,7 +29,7 @@ export default function SettingsPage() {
     setFormData({ ...formData, [name]: value })
   }
 
-  const handleToggle = (field: string) => {
+  const handleToggle = (field: keyof typeof formData) => {
     setFormData({ ...formData, [field]: !formData[field] })
   }
 
