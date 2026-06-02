@@ -1,9 +1,9 @@
 import { streamText, convertToModelMessages } from 'ai'
-import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { createOpenAI } from '@ai-sdk/openai'
 
-const gemini = createGoogleGenerativeAI({
-  apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+const groq = createOpenAI({
+  baseURL: 'https://api.groq.com/openai/v1',
+  apiKey: process.env.GROQ_API_KEY,
 })
 
 // Ollama runs locally — OpenAI-compatible API on port 11434
@@ -12,6 +12,7 @@ const ollama = createOpenAI({
   apiKey: 'ollama',
 })
 
+const GROQ_MODEL = process.env.GROQ_MODEL ?? 'llama-3.1-8b-instant'
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL ?? 'gemma2:2b'
 
 const systemPrompt = `You are Mwalimu AI, an expert professional development coach for Kenyan teachers implementing Competency-Based Curriculum (CBC).
@@ -35,12 +36,28 @@ Your role is to:
 
 Always be supportive, practical, and encouraging. Reference real classroom scenarios when possible.`
 
+// streamText errors happen asynchronously, so try/catch won't catch them.
+// Track Groq failures so the NEXT request automatically falls back to Ollama.
+let groqFailedAt = 0
+const GROQ_COOLDOWN_MS = 60_000 // 1 minute
+
+function markGroqFailed() {
+  groqFailedAt = Date.now()
+}
+
+function groqOnCooldown() {
+  return Date.now() - groqFailedAt < GROQ_COOLDOWN_MS
+}
+
 async function isOllamaAvailable(): Promise<boolean> {
   try {
     const res = await fetch('http://localhost:11434/api/tags', {
       signal: AbortSignal.timeout(1500),
     })
-    return res.ok
+    if (!res.ok) return false
+    const { models } = (await res.json()) as { models: Array<{ name: string }> }
+    const base = OLLAMA_MODEL.split(':')[0]
+    return Array.isArray(models) && models.some(m => m.name === OLLAMA_MODEL || m.name.startsWith(base + ':') || m.name === base)
   } catch {
     return false
   }
@@ -50,24 +67,32 @@ export async function POST(req: Request) {
   const { messages } = await req.json()
   const converted = await convertToModelMessages(messages)
 
-  // Try Gemini (online) first
-  if (process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
-    try {
-      const result = streamText({
-        model: gemini('gemini-2.0-flash-lite'),
-        system: systemPrompt,
-        messages: converted,
-        temperature: 0.7,
-        maxOutputTokens: 1000,
-        maxRetries: 0,
-      })
-      const response = result.toUIMessageStreamResponse()
-      // Tag which backend served this request
-      response.headers.set('X-AI-Backend', 'gemini')
-      return response
-    } catch {
-      // Gemini failed (quota, network, etc.) — fall through to Ollama
-    }
+  const canUseGroq = process.env.GROQ_API_KEY && !groqOnCooldown()
+
+  if (canUseGroq) {
+    const result = streamText({
+      model: groq(GROQ_MODEL),
+      system: systemPrompt,
+      messages: converted,
+      temperature: 0.7,
+      maxOutputTokens: 1000,
+      maxRetries: 0,
+      onError({ error }: { error: unknown }) {
+        const msg = String(error)
+        if (
+          msg.includes('429') ||
+          msg.includes('quota') ||
+          msg.includes('rate_limit') ||
+          msg.includes('rate limit') ||
+          msg.includes('TooManyRequests')
+        ) {
+          markGroqFailed()
+        }
+      },
+    })
+    const response = result.toUIMessageStreamResponse()
+    response.headers.set('X-AI-Backend', 'groq')
+    return response
   }
 
   // Fall back to local Ollama
@@ -76,8 +101,8 @@ export async function POST(req: Request) {
     return Response.json(
       {
         error:
-          'No AI backend available. Online: add GOOGLE_GENERATIVE_AI_API_KEY to .env.local. ' +
-          'Offline: install Ollama from https://ollama.com and run: ollama pull gemma2:2b',
+          'No AI backend available. Online: add GROQ_API_KEY to .env.local (free at console.groq.com). ' +
+          'Offline: run "ollama pull gemma2:2b" to install a local model.',
       },
       { status: 503 }
     )

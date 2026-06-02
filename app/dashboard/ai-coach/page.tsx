@@ -29,7 +29,7 @@ function TypingDots() {
   )
 }
 
-type Backend = 'gemini' | 'ollama' | null
+type Backend = 'groq' | 'ollama' | null
 
 export default function AICoachPage() {
   const [input, setInput] = useState('')
@@ -78,8 +78,8 @@ export default function AICoachPage() {
     if (!error) return null
     const msg = error.message
     if (msg.includes('not configured') || msg.includes('503'))
-      return 'AI service not configured — add GOOGLE_GENERATIVE_AI_API_KEY to .env.local and restart the server, or set up Ollama for offline use.'
-    if (msg.includes('quota') || msg.includes('RESOURCE_EXHAUSTED'))
+      return 'AI service not configured — add GROQ_API_KEY to .env.local and restart the server, or set up Ollama for offline use.'
+    if (msg.includes('quota') || msg.includes('rate_limit') || msg.includes('rate limit'))
       return 'Online quota exceeded. If Ollama is installed and running, the next message will use it automatically.'
     if (msg.includes('Ollama') || msg.includes('11434') || msg.includes('No AI backend'))
       return 'No AI backend available. Online: check your API key. Offline: install Ollama (ollama.com) and run: ollama pull gemma2:2b'
@@ -97,10 +97,10 @@ export default function AICoachPage() {
 
         {/* Backend indicator */}
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          {backend === 'gemini' && (
+          {backend === 'groq' && (
             <>
               <Wifi className="w-3.5 h-3.5 text-primary" />
-              <span className="text-primary font-medium">Gemini (online)</span>
+              <span className="text-primary font-medium">Groq (online)</span>
             </>
           )}
           {backend === 'ollama' && (
