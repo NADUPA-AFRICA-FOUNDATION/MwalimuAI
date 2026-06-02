@@ -25,6 +25,11 @@ pnpm-debug.log*
 *.pem
 Thumbs.db
 
+# Claude Code internal files
+.agents/
+.claude/skills/
+skills-lock.json
+
 # vercel
 .vercel
 

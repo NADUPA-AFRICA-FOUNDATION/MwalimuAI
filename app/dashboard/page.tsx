@@ -1,24 +1,33 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import {
-  BookOpen,
-  MessageSquare,
-  FileText,
-  Trophy,
-  Users,
-  ArrowRight,
-  Sparkles,
-  TrendingUp,
-  Clock,
-  Star,
-  ChevronRight,
-  Flame,
+  BookOpen, MessageSquare, FileText, Trophy, Users, ArrowRight,
+  Sparkles, TrendingUp, Clock, Star, ChevronRight, Flame, PenLine,
 } from 'lucide-react'
 import Link from 'next/link'
+import { getStreak, recordActivity, getBadgeInput, computeBadges } from '@/lib/streak'
+import { useProfile } from '@/context/profile-context'
 
 export default function DashboardPage() {
+  const { profile } = useProfile()
+  const [streak, setStreak] = useState({ current: 0, longest: 0, totalDays: 0, weekDays: Array(7).fill(false) as boolean[] })
+  const [badgesEarned, setBadgesEarned] = useState(0)
+  const [completedLessons, setCompletedLessons] = useState(0)
+
+  useEffect(() => {
+    recordActivity('login')
+    const s = getStreak()
+    setStreak(s)
+    const input = getBadgeInput()
+    setBadgesEarned(computeBadges(input).filter(b => b.earned).length)
+    setCompletedLessons(input.completedLessons)
+  }, [])
+
+  const teacherName = profile?.name && profile.name !== 'Teacher' ? profile.name : 'Teacher'
+
   return (
     <div className="space-y-7">
 
@@ -35,10 +44,10 @@ export default function DashboardPage() {
             <div>
               <div className="inline-flex items-center gap-2 bg-white/20 text-white px-3 py-1.5 rounded-full text-xs font-semibold mb-4">
                 <Sparkles className="w-3.5 h-3.5 animate-spin-slow" />
-                Welcome back, Teacher!
+                {streak.current >= 3 ? `🔥 ${streak.current}-day streak!` : 'Welcome back!'}
               </div>
               <h1 className="text-2xl md:text-3xl font-bold text-primary-foreground mb-2 tracking-tight">
-                Ready to continue learning?
+                Ready to continue learning, {teacherName}?
               </h1>
               <p className="text-primary-foreground/75 text-sm max-w-md leading-relaxed">
                 Pick up where you left off or explore new CBC teaching strategies with your AI coach.
@@ -68,15 +77,15 @@ export default function DashboardPage() {
         <div className="glass rounded-2xl p-5 hover:shadow-lg hover:shadow-primary/8 hover:-translate-y-0.5 transition-all duration-200">
           <div className="flex items-start justify-between mb-4">
             <div>
-              <p className="text-xs text-muted-foreground mb-1 font-medium">Modules Completed</p>
-              <p className="text-3xl font-bold gradient-text tabular-nums">2</p>
-              <p className="text-xs text-muted-foreground mt-1">of 6 modules</p>
+              <p className="text-xs text-muted-foreground mb-1 font-medium">Lessons Completed</p>
+              <p className="text-3xl font-bold gradient-text tabular-nums">{completedLessons}</p>
+              <p className="text-xs text-muted-foreground mt-1">{completedLessons === 0 ? 'Start your first lesson' : 'lessons done'}</p>
             </div>
             <div className="w-11 h-11 bg-gradient-to-br from-primary/20 to-primary/5 rounded-xl flex items-center justify-center shrink-0">
               <BookOpen className="w-5 h-5 text-primary" />
             </div>
           </div>
-          <Progress value={33} className="h-1.5" />
+          <Progress value={Math.min(100, (completedLessons / 36) * 100)} className="h-1.5" />
         </div>
 
         <div className="glass rounded-2xl p-5 hover:shadow-lg hover:shadow-accent/8 hover:-translate-y-0.5 transition-all duration-200">
@@ -117,19 +126,16 @@ export default function DashboardPage() {
           <div className="flex items-start justify-between mb-4">
             <div>
               <p className="text-xs text-muted-foreground mb-1 font-medium">Badges Earned</p>
-              <p className="text-3xl font-bold text-accent tabular-nums">3</p>
-              <p className="text-xs text-muted-foreground mt-1">achievements</p>
+              <p className="text-3xl font-bold text-accent tabular-nums">{badgesEarned}</p>
+              <p className="text-xs text-muted-foreground mt-1">{badgesEarned === 0 ? 'None yet' : 'achievements'}</p>
             </div>
             <div className="w-11 h-11 bg-gradient-to-br from-accent/20 to-accent/5 rounded-xl flex items-center justify-center shrink-0">
               <Trophy className="w-5 h-5 text-accent" />
             </div>
           </div>
-          <div className="flex gap-1.5">
-            {['bg-primary', 'bg-accent', 'bg-primary/30'].map((bg, i) => (
-              <div key={i} className={`w-6 h-6 ${bg} rounded-full flex items-center justify-center`}>
-                <span className="text-[9px] font-bold text-white">{i + 1}</span>
-              </div>
-            ))}
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Star className="w-3.5 h-3.5 fill-accent text-accent" />
+            {badgesEarned === 0 ? 'Complete lessons to earn badges' : `${12 - badgesEarned} more to unlock`}
           </div>
         </div>
 
@@ -215,36 +221,46 @@ export default function DashboardPage() {
 
       {/* ── Daily Streak ─────────────────────────────────── */}
       <div className="glass rounded-2xl p-5">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-br from-accent/20 to-accent/5 rounded-xl flex items-center justify-center">
               <Flame className="w-5 h-5 text-accent" />
             </div>
             <div>
-              <p className="font-semibold text-sm tracking-tight">7-Day Learning Streak</p>
-              <p className="text-xs text-muted-foreground">Keep it up! You're on a roll.</p>
+              <p className="font-semibold text-sm tracking-tight">
+                {streak.current > 0 ? `${streak.current}-Day Streak` : 'Start Your Streak'}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {streak.current === 0 ? 'Complete a lesson today to begin' :
+                 streak.current >= 7  ? "You're on a roll! Keep it up." :
+                 `Longest: ${streak.longest} days · Total: ${streak.totalDays} active days`}
+              </p>
             </div>
           </div>
           <Link href="/dashboard/achievements">
             <Button size="sm" variant="outline" className="text-xs rounded-xl border-border/60 hover:border-primary/40 hover:text-primary transition-all">
-              View All
+              View Badges
             </Button>
           </Link>
         </div>
 
-        <div className="flex gap-1.5 mt-4">
-          {['M','T','W','T','F','S','S'].map((day, i) => (
-            <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
-              <div className={`w-full aspect-square rounded-lg flex items-center justify-center text-[10px] font-bold transition-all ${
-                i < 5
-                  ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/20'
-                  : 'bg-muted text-muted-foreground'
-              }`}>
-                {i < 5 ? '✓' : day}
+        {/* Last 7 days — today first (index 0) */}
+        <div className="flex gap-1.5">
+          {['Today','6d','5d','4d','3d','2d','1d'].map((label, i) => {
+            const active = streak.weekDays[i]
+            return (
+              <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
+                <div className={`w-full aspect-square rounded-lg flex items-center justify-center text-[10px] font-bold transition-all ${
+                  active
+                    ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/20'
+                    : i === 0 ? 'bg-muted/80 border-2 border-dashed border-primary/30 text-muted-foreground' : 'bg-muted text-muted-foreground/50'
+                }`}>
+                  {active ? '✓' : i === 0 ? '·' : '·'}
+                </div>
+                <span className="text-[9px] text-muted-foreground truncate w-full text-center">{label}</span>
               </div>
-              <span className="text-[10px] text-muted-foreground">{day}</span>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
 

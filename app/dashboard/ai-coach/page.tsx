@@ -6,7 +6,21 @@ import { DefaultChatTransport } from 'ai'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { BackButton } from '@/components/back-button'
-import { Send, Lightbulb, AlertCircle, RefreshCw, Wifi, WifiOff, Cpu } from 'lucide-react'
+import { Send, Lightbulb, AlertCircle, RefreshCw, Wifi, WifiOff, Cpu, BookMarked, X } from 'lucide-react'
+import { MarkdownRenderer } from '@/components/markdown-renderer'
+import { useProfile } from '@/context/profile-context'
+import Link from 'next/link'
+
+const LESSON_CONTEXT_KEY = 'mwalimu_current_lesson'
+
+interface LessonContext {
+  programId: string
+  moduleId: string
+  lessonId: string
+  programTitle: string
+  moduleTitle: string
+  lessonTitle: string
+}
 
 const suggestedQuestions = [
   'How do I implement formative assessment in my CBC classroom?',
@@ -21,7 +35,7 @@ function TypingDots() {
       {[0, 1, 2].map(i => (
         <div
           key={i}
-          className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce"
+          className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce motion-reduce:animate-none"
           style={{ animationDelay: `${i * 120}ms`, animationDuration: '900ms' }}
         />
       ))}
@@ -36,7 +50,9 @@ export default function AICoachPage() {
   const [showSuggestions, setShowSuggestions] = useState(true)
   const [backend, setBackend] = useState<Backend>(null)
   const [isOnline, setIsOnline] = useState(true)
+  const [lessonCtx, setLessonCtx] = useState<LessonContext | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const { lang, profile } = useProfile()
 
   useEffect(() => {
     setIsOnline(navigator.onLine)
@@ -44,13 +60,30 @@ export default function AICoachPage() {
     const down = () => setIsOnline(false)
     window.addEventListener('online',  up)
     window.addEventListener('offline', down)
+    // Read current lesson context from localStorage (set by lesson player)
+    try {
+      const raw = localStorage.getItem(LESSON_CONTEXT_KEY)
+      if (raw) setLessonCtx(JSON.parse(raw) as LessonContext)
+    } catch {}
     return () => { window.removeEventListener('online', up); window.removeEventListener('offline', down) }
   }, [])
 
   const { messages, status, error, sendMessage } = useChat({
+    id: `chat-${lang}`,
     transport: new DefaultChatTransport({
       api: '/api/chat',
-      // Capture which backend responded via response header
+      body: {
+        lang,
+        profile: profile ? {
+          name: profile.name, subjects: profile.subjects,
+          grades: profile.grades, cbcLevel: profile.cbcLevel,
+        } : null,
+        currentLesson: lessonCtx ? {
+          programTitle: lessonCtx.programTitle,
+          moduleTitle: lessonCtx.moduleTitle,
+          lessonTitle: lessonCtx.lessonTitle,
+        } : null,
+      },
       fetch: async (url, init) => {
         const res = await fetch(url, init as RequestInit)
         const b = res.headers.get('X-AI-Backend') as Backend
@@ -128,6 +161,24 @@ export default function AICoachPage() {
         </div>
       )}
 
+      {/* Current lesson context banner */}
+      {lessonCtx && (
+        <div className="mx-4 md:mx-8 mb-2 flex items-center gap-3 bg-primary/6 border border-primary/20 px-4 py-2.5 rounded-xl text-sm shrink-0">
+          <BookMarked className="w-4 h-4 text-primary shrink-0" />
+          <div className="flex-1 min-w-0">
+            <span className="text-xs text-muted-foreground">Currently studying · </span>
+            <span className="font-medium text-xs">{lessonCtx.lessonTitle}</span>
+            <span className="text-xs text-muted-foreground"> in {lessonCtx.programTitle}</span>
+          </div>
+          <Link href={`/dashboard/learning/${lessonCtx.programId}/${lessonCtx.moduleId}/${lessonCtx.lessonId}`} className="text-xs text-primary hover:underline shrink-0">
+            Back to lesson
+          </Link>
+          <button onClick={() => setLessonCtx(null)} className="text-muted-foreground hover:text-foreground ml-1 shrink-0" aria-label="Dismiss lesson context">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
       {/* Offline notice when no messages yet */}
       {!isOnline && messages.length === 0 && backend !== 'ollama' && (
         <div className="mx-4 md:mx-8 mb-2 flex items-start gap-3 bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-xl text-sm shrink-0">
@@ -186,13 +237,16 @@ export default function AICoachPage() {
                     </div>
                   )}
                   <div
-                    className={`max-w-xl px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
+                    className={`max-w-xl px-4 py-3 rounded-2xl text-sm leading-relaxed ${
                       message.role === 'user'
-                        ? 'bg-primary text-primary-foreground rounded-tr-sm'
+                        ? 'bg-primary text-primary-foreground rounded-tr-sm whitespace-pre-wrap'
                         : 'bg-muted text-foreground rounded-tl-sm'
                     }`}
                   >
-                    {textContent}
+                    {message.role === 'user'
+                      ? textContent
+                      : <MarkdownRenderer content={textContent} compact />
+                    }
                   </div>
                 </div>
               )
@@ -241,6 +295,8 @@ export default function AICoachPage() {
               }
             }}
             placeholder={isOnline ? 'Ask your AI coach anything about CBC…' : 'Offline — using local Ollama model…'}
+            aria-label="Message to AI coach"
+            autoComplete="off"
             disabled={isLoading}
             className="flex-1 rounded-xl border-border/60 focus:border-primary/50 bg-background"
           />

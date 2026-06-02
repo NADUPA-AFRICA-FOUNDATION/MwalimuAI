@@ -15,8 +15,29 @@ const ollama = createOpenAI({
 const GROQ_MODEL = process.env.GROQ_MODEL ?? 'llama-3.1-8b-instant'
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL ?? 'gemma2:2b'
 
-const systemPrompt = `You are Mwalimu AI, an expert professional development coach for Kenyan teachers implementing Competency-Based Curriculum (CBC).
+function buildSystemPrompt(lang?: string, profile?: {
+  name?: string; subjects?: string[]; grades?: string[]; cbcLevel?: string
+} | null, currentLesson?: {
+  programTitle?: string; moduleTitle?: string; lessonTitle?: string
+} | null): string {
+  const langInstruction = lang === 'sw'
+    ? 'IMPORTANT: Always respond in Kiswahili (Swahili). Use clear, accessible Kiswahili that Kenyan teachers will understand.\n\n'
+    : ''
 
+  const profileContext = profile?.name ? `
+You are speaking with ${profile.name}, a ${profile.cbcLevel ?? 'CBC'}-level teacher${
+  profile.subjects?.length ? ` who teaches ${profile.subjects.join(', ')}` : ''
+}${profile.grades?.length ? ` for ${profile.grades.join(', ')}` : ''}.
+Tailor your guidance to their experience level and teaching context.
+` : ''
+
+  const lessonContext = currentLesson?.lessonTitle ? `
+The teacher is currently studying: "${currentLesson.lessonTitle}" (${currentLesson.moduleTitle ?? ''}, ${currentLesson.programTitle ?? ''}).
+If their question is related to this topic, connect your answer to this lesson content. You may proactively offer to explain key concepts from this lesson if helpful.
+` : ''
+
+  return `${langInstruction}You are Mwalimu AI, an expert professional development coach for Kenyan teachers implementing Competency-Based Curriculum (CBC).
+${profileContext}${lessonContext}
 You are knowledgeable about:
 - CBC fundamentals and implementation strategies
 - Competency-based assessment techniques
@@ -35,6 +56,7 @@ Your role is to:
 6. Be empathetic to the challenges of teaching in Kenya's context
 
 Always be supportive, practical, and encouraging. Reference real classroom scenarios when possible.`
+}
 
 // streamText errors happen asynchronously, so try/catch won't catch them.
 // Track Groq failures so the NEXT request automatically falls back to Ollama.
@@ -64,15 +86,16 @@ async function isOllamaAvailable(): Promise<boolean> {
 }
 
 export async function POST(req: Request) {
-  const { messages } = await req.json()
+  const { messages, lang, profile, currentLesson } = await req.json()
   const converted = await convertToModelMessages(messages)
+  const system = buildSystemPrompt(lang, profile, currentLesson)
 
   const canUseGroq = process.env.GROQ_API_KEY && !groqOnCooldown()
 
   if (canUseGroq) {
     const result = streamText({
       model: groq(GROQ_MODEL),
-      system: systemPrompt,
+      system,
       messages: converted,
       temperature: 0.7,
       maxOutputTokens: 1000,
@@ -110,7 +133,7 @@ export async function POST(req: Request) {
 
   const result = streamText({
     model: ollama(OLLAMA_MODEL),
-    system: systemPrompt,
+    system,
     messages: converted,
     temperature: 0.7,
     maxOutputTokens: 1000,

@@ -1,26 +1,38 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Spinner } from '@/components/ui/spinner'
 import { BackButton } from '@/components/back-button'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { Eye, EyeOff, GraduationCap } from 'lucide-react'
+import { createUserWithEmailAndPassword } from 'firebase/auth'
+import { auth } from '@/lib/firebase'
+
+function mapFirebaseError(code: string): string {
+  switch (code) {
+    case 'auth/email-already-in-use':
+      return 'An account with this email already exists. Try signing in instead.'
+    case 'auth/invalid-email':
+      return 'Please enter a valid email address.'
+    case 'auth/weak-password':
+      return 'Password must be at least 6 characters.'
+    default:
+      return 'Sign-up failed. Please try again.'
+  }
+}
 
 export default function Page() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [repeatPassword, setRepeatPassword] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+  const [email, setEmail]                     = useState('')
+  const [password, setPassword]               = useState('')
+  const [repeatPassword, setRepeatPassword]   = useState('')
+  const [showPassword, setShowPassword]       = useState(false)
+  const [error, setError]                     = useState<string | null>(null)
+  const [isLoading, setIsLoading]             = useState(false)
   const router = useRouter()
 
   const handleSignUp = async (e: React.FormEvent) => {
@@ -28,13 +40,25 @@ export default function Page() {
     setError(null)
 
     if (password !== repeatPassword) {
-      setError('Passwords do not match')
+      setError('Passwords do not match.')
+      return
+    }
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters.')
       return
     }
 
     setIsLoading(true)
-    await new Promise((r) => setTimeout(r, 500))
-    router.push('/auth/sign-up-success')
+    try {
+      await createUserWithEmailAndPassword(auth, email.trim(), password)
+      // Firebase auto-signs the user in after creation — go straight to onboarding
+      router.push('/onboarding')
+    } catch (err: unknown) {
+      const code = (err as { code?: string }).code ?? ''
+      setError(mapFirebaseError(code))
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -42,54 +66,92 @@ export default function Page() {
       <div className="w-full max-w-sm">
         <div className="flex flex-col gap-6">
           <BackButton fallbackHref="/" />
+
+          <Link href="/" className="flex items-center justify-center gap-3 self-center">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary shadow-lg shadow-primary/25">
+              <GraduationCap className="h-5 w-5 text-primary-foreground" aria-hidden="true" />
+            </div>
+            <span className="text-xl font-bold tracking-tight">Mwalimu AI</span>
+          </Link>
+
           <Card>
             <CardHeader>
-              <CardTitle className="text-2xl">Sign up</CardTitle>
-              <CardDescription>Create a new account</CardDescription>
+              <CardTitle className="text-2xl">Create your account</CardTitle>
+              <CardDescription>Start your CBC professional development journey</CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSignUp}>
-                <div className="flex flex-col gap-6">
+              <form onSubmit={handleSignUp} noValidate>
+                <div className="flex flex-col gap-5">
+
                   <div className="grid gap-2">
                     <Label htmlFor="email">Email</Label>
                     <Input
                       id="email"
                       type="email"
-                      placeholder="m@example.com"
+                      inputMode="email"
+                      autoComplete="email"
+                      spellCheck={false}
+                      placeholder="you@school.ac.ke"
                       required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                     />
                   </div>
+
                   <div className="grid gap-2">
                     <Label htmlFor="password">Password</Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      required
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                    />
+                    <div className="relative">
+                      <Input
+                        id="password"
+                        type={showPassword ? 'text' : 'password'}
+                        autoComplete="new-password"
+                        required
+                        className="pr-10"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(v => !v)}
+                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                        aria-pressed={showPassword}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      >
+                        {showPassword
+                          ? <EyeOff className="h-4 w-4" aria-hidden="true" />
+                          : <Eye    className="h-4 w-4" aria-hidden="true" />}
+                      </button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Minimum 6 characters</p>
                   </div>
+
                   <div className="grid gap-2">
-                    <Label htmlFor="repeat-password">Repeat Password</Label>
+                    <Label htmlFor="repeat-password">Confirm Password</Label>
                     <Input
                       id="repeat-password"
-                      type="password"
+                      type={showPassword ? 'text' : 'password'}
+                      autoComplete="new-password"
                       required
                       value={repeatPassword}
                       onChange={(e) => setRepeatPassword(e.target.value)}
                     />
                   </div>
-                  {error && <p className="text-sm text-red-500">{error}</p>}
+
+                  {error && (
+                    <p role="alert" className="text-sm text-destructive rounded-lg bg-destructive/10 border border-destructive/20 px-3 py-2">
+                      {error}
+                    </p>
+                  )}
+
                   <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? 'Creating an account...' : 'Sign up'}
+                    {isLoading ? <><Spinner className="mr-2 size-4" />Creating account…</> : 'Create account'}
                   </Button>
                 </div>
-                <div className="mt-4 text-center text-sm">
+
+                <div className="mt-4 text-center text-sm text-muted-foreground">
                   Already have an account?{' '}
-                  <Link href="/auth/login" className="underline underline-offset-4">
-                    Login
+                  <Link href="/auth/login" className="font-medium text-primary underline underline-offset-4">
+                    Sign in
                   </Link>
                 </div>
               </form>

@@ -122,6 +122,12 @@
   body {
     @apply bg-background text-foreground;
   }
+  :root {
+    color-scheme: light;
+  }
+  .dark {
+    color-scheme: dark;
+  }
 }
 
 /* scroll-behavior set via data-scroll-behavior on <html> in layout.tsx */
@@ -297,4 +303,129 @@
   -webkit-mask-composite: xor;
   mask-composite: exclude;
   pointer-events: none;
+}
+
+/* ═══════════════════════════════════════════════════════
+   ACCESSIBILITY OVERRIDES
+   Applied via data-a11y-* attributes on <html>
+═══════════════════════════════════════════════════════ */
+
+/* ── Accessibility widget panel animation ── */
+@keyframes a11yPanelIn {
+  from { opacity: 0; transform: translateY(10px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+
+/* ── Text Size ── */
+html[data-a11y-text="large"]   { font-size: 112% !important; }
+html[data-a11y-text="xlarge"]  { font-size: 124% !important; }
+html[data-a11y-text="xxlarge"] { font-size: 140% !important; }
+
+/* ── High Contrast ── */
+html[data-a11y-contrast] {
+  --foreground:       oklch(0.05 0.01 180);
+  --background:       oklch(1    0    0);
+  --card:             oklch(0.99 0    0);
+  --card-foreground:  oklch(0.05 0.01 180);
+  --muted:            oklch(0.92 0    0);
+  --muted-foreground: oklch(0.2  0    0);
+  --border:           oklch(0.4  0    0);
+  --primary:          oklch(0.35 0.18 160);
+  --primary-foreground: oklch(1 0 0);
+}
+
+html[data-a11y-contrast] * {
+  text-shadow: none !important;
+}
+
+html[data-a11y-contrast].dark,
+html[data-a11y-contrast][class*="dark"] {
+  --foreground:       oklch(0.98 0    0);
+  --background:       oklch(0.05 0    0);
+  --card:             oklch(0.08 0    0);
+  --card-foreground:  oklch(0.98 0    0);
+  --muted:            oklch(0.13 0    0);
+  --muted-foreground: oklch(0.8  0    0);
+  --border:           oklch(0.6  0    0);
+}
+
+/* ── Reduce Motion ── */
+html[data-a11y-motion] *,
+html[data-a11y-motion] *::before,
+html[data-a11y-motion] *::after {
+  animation-duration:        0.001ms !important;
+  animation-iteration-count: 1       !important;
+  transition-duration:       0.001ms !important;
+  transition-delay:          0ms     !important;
+  scroll-behavior:           auto    !important;
+}
+
+/* ── Dyslexia-Friendly Font ── */
+html[data-a11y-dyslexia],
+html[data-a11y-dyslexia] body,
+html[data-a11y-dyslexia] p,
+html[data-a11y-dyslexia] li,
+html[data-a11y-dyslexia] td,
+html[data-a11y-dyslexia] button,
+html[data-a11y-dyslexia] input,
+html[data-a11y-dyslexia] textarea,
+html[data-a11y-dyslexia] label,
+html[data-a11y-dyslexia] span {
+  font-family: 'Verdana', 'Trebuchet MS', 'Arial', sans-serif !important;
+  letter-spacing: 0.06em  !important;
+  word-spacing:   0.12em  !important;
+}
+
+html[data-a11y-dyslexia] h1,
+html[data-a11y-dyslexia] h2,
+html[data-a11y-dyslexia] h3,
+html[data-a11y-dyslexia] h4 {
+  font-family: 'Verdana', 'Trebuchet MS', 'Arial', sans-serif !important;
+  letter-spacing: 0.04em !important;
+}
+
+/* ── Wide Line Spacing ── */
+html[data-a11y-spacing] body,
+html[data-a11y-spacing] p,
+html[data-a11y-spacing] li,
+html[data-a11y-spacing] td,
+html[data-a11y-spacing] label,
+html[data-a11y-spacing] .text-sm,
+html[data-a11y-spacing] .text-xs,
+html[data-a11y-spacing] .text-base,
+html[data-a11y-spacing] .leading-relaxed {
+  line-height: 2.1 !important;
+}
+
+/* ── Enhanced focus outlines — always visible for keyboard users ── */
+:focus-visible {
+  outline: 2.5px solid oklch(0.55 0.18 160);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* Stronger focus rings in high-contrast mode */
+html[data-a11y-contrast] :focus-visible {
+  outline: 3px solid #000;
+  outline-offset: 3px;
+}
+html[data-a11y-contrast].dark :focus-visible {
+  outline: 3px solid #fff;
+}
+
+/* ── Honour prefers-reduced-motion for custom animation classes ── */
+@media (prefers-reduced-motion: reduce) {
+  .animate-blob,
+  .animate-spin-slow,
+  .animate-fade-in-up,
+  .animate-fade-in,
+  .animate-draw-line,
+  .shimmer {
+    animation: none !important;
+    transition: none !important;
+  }
+  @keyframes a11yPanelIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
 }
