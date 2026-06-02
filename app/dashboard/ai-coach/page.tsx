@@ -6,7 +6,7 @@ import { DefaultChatTransport } from 'ai'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { BackButton } from '@/components/back-button'
-import { Send, Lightbulb, AlertCircle, RefreshCw } from 'lucide-react'
+import { Send, Lightbulb, AlertCircle, RefreshCw, Wifi, WifiOff, Cpu } from 'lucide-react'
 
 const suggestedQuestions = [
   'How do I implement formative assessment in my CBC classroom?',
@@ -29,13 +29,35 @@ function TypingDots() {
   )
 }
 
+type Backend = 'gemini' | 'ollama' | null
+
 export default function AICoachPage() {
   const [input, setInput] = useState('')
   const [showSuggestions, setShowSuggestions] = useState(true)
+  const [backend, setBackend] = useState<Backend>(null)
+  const [isOnline, setIsOnline] = useState(true)
   const bottomRef = useRef<HTMLDivElement>(null)
 
+  useEffect(() => {
+    setIsOnline(navigator.onLine)
+    const up   = () => setIsOnline(true)
+    const down = () => setIsOnline(false)
+    window.addEventListener('online',  up)
+    window.addEventListener('offline', down)
+    return () => { window.removeEventListener('online', up); window.removeEventListener('offline', down) }
+  }, [])
+
   const { messages, status, error, sendMessage } = useChat({
-    transport: new DefaultChatTransport({ api: '/api/chat' }),
+    transport: new DefaultChatTransport({
+      api: '/api/chat',
+      // Capture which backend responded via response header
+      fetch: async (url, init) => {
+        const res = await fetch(url, init as RequestInit)
+        const b = res.headers.get('X-AI-Backend') as Backend
+        if (b) setBackend(b)
+        return res
+      },
+    }),
   })
 
   const isLoading = status === 'streaming' || status === 'submitted'
@@ -52,26 +74,67 @@ export default function AICoachPage() {
     setShowSuggestions(false)
   }
 
+  const errorMessage = (() => {
+    if (!error) return null
+    const msg = error.message
+    if (msg.includes('not configured') || msg.includes('503'))
+      return 'AI service not configured — add GOOGLE_GENERATIVE_AI_API_KEY to .env.local and restart the server, or set up Ollama for offline use.'
+    if (msg.includes('quota') || msg.includes('RESOURCE_EXHAUSTED'))
+      return 'Online quota exceeded. If Ollama is installed and running, the next message will use it automatically.'
+    if (msg.includes('Ollama') || msg.includes('11434') || msg.includes('No AI backend'))
+      return 'No AI backend available. Online: check your API key. Offline: install Ollama (ollama.com) and run: ollama pull gemma2:2b'
+    if (msg.includes('API_KEY') || msg.includes('401'))
+      return 'Invalid API key — check GOOGLE_GENERATIVE_AI_API_KEY in .env.local.'
+    return `Something went wrong: ${msg}`
+  })()
+
   return (
     <div className="flex flex-col bg-background" style={{ height: 'calc(100vh - 57px)' }}>
 
-      {/* Back nav */}
-      <div className="px-4 md:px-8 pt-4 pb-2 shrink-0">
+      {/* Back nav + status bar */}
+      <div className="px-4 md:px-8 pt-4 pb-2 shrink-0 flex items-center justify-between">
         <BackButton fallbackHref="/dashboard" label="Back to Dashboard" />
+
+        {/* Backend indicator */}
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          {backend === 'gemini' && (
+            <>
+              <Wifi className="w-3.5 h-3.5 text-primary" />
+              <span className="text-primary font-medium">Gemini (online)</span>
+            </>
+          )}
+          {backend === 'ollama' && (
+            <>
+              <Cpu className="w-3.5 h-3.5 text-accent" />
+              <span className="text-accent font-medium">Ollama (local)</span>
+            </>
+          )}
+          {!backend && (
+            <>
+              {isOnline
+                ? <Wifi className="w-3.5 h-3.5" />
+                : <WifiOff className="w-3.5 h-3.5 text-destructive" />}
+              <span>{isOnline ? 'Online' : 'Offline'}</span>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Error banner */}
-      {error && (
+      {errorMessage && (
         <div className="mx-4 md:mx-8 mb-2 flex items-start gap-3 bg-destructive/10 border border-destructive/25 text-destructive px-4 py-3 rounded-xl text-sm shrink-0">
           <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-          <span className="flex-1">
-            {error.message.includes('not configured')
-              ? 'AI service not configured — add GOOGLE_GENERATIVE_AI_API_KEY to .env.local and restart the server.'
-              : error.message.includes('quota') || error.message.includes('RESOURCE_EXHAUSTED')
-              ? 'API quota exceeded. Your free-tier limit has been reached — wait a minute and try again, or upgrade your Google AI plan at aistudio.google.com.'
-              : error.message.includes('API_KEY') || error.message.includes('401')
-              ? 'Invalid API key — check GOOGLE_GENERATIVE_AI_API_KEY in .env.local.'
-              : `Something went wrong: ${error.message}`}
+          <span className="flex-1">{errorMessage}</span>
+        </div>
+      )}
+
+      {/* Offline notice when no messages yet */}
+      {!isOnline && messages.length === 0 && backend !== 'ollama' && (
+        <div className="mx-4 md:mx-8 mb-2 flex items-start gap-3 bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-xl text-sm shrink-0">
+          <WifiOff className="w-4 h-4 mt-0.5 shrink-0" />
+          <span>
+            You&apos;re offline. Messages will use your local Ollama model if it&apos;s running.{' '}
+            <span className="font-medium">Setup: install Ollama → run <code className="bg-amber-100 px-1 rounded">ollama pull gemma2:2b</code></span>
           </span>
         </div>
       )}
@@ -86,7 +149,7 @@ export default function AICoachPage() {
             <h1 className="text-2xl font-bold mb-2 tracking-tight">Your AI Coach</h1>
             <p className="text-muted-foreground max-w-md mb-8 leading-relaxed text-sm">
               Get personalized guidance on CBC implementation, assessment strategies, and teaching
-              techniques. Ask me anything about professional development.
+              techniques. Works online via Gemini and offline via Ollama.
             </p>
 
             {showSuggestions && (
@@ -155,7 +218,11 @@ export default function AICoachPage() {
         {error && (
           <div className="flex justify-end mb-2">
             <button
-              onClick={() => sendMessage({ text: messages[messages.length - 1]?.parts?.find((p): p is { type: 'text'; text: string } => p.type === 'text')?.text ?? '' })}
+              onClick={() => handleSend(
+                messages.findLast(m => m.role === 'user')
+                  ?.parts?.find((p): p is { type: 'text'; text: string } => p.type === 'text')
+                  ?.text ?? ''
+              )}
               className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"
             >
               <RefreshCw className="w-3.5 h-3.5" />
@@ -173,7 +240,7 @@ export default function AICoachPage() {
                 handleSend()
               }
             }}
-            placeholder="Ask your AI coach anything about CBC…"
+            placeholder={isOnline ? 'Ask your AI coach anything about CBC…' : 'Offline — using local Ollama model…'}
             disabled={isLoading}
             className="flex-1 rounded-xl border-border/60 focus:border-primary/50 bg-background"
           />

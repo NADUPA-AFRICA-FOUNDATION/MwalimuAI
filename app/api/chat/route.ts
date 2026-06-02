@@ -1,5 +1,18 @@
 import { streamText, convertToModelMessages } from 'ai'
-import { google } from '@ai-sdk/google'
+import { createGoogleGenerativeAI } from '@ai-sdk/google'
+import { createOpenAI } from '@ai-sdk/openai'
+
+const gemini = createGoogleGenerativeAI({
+  apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+})
+
+// Ollama runs locally — OpenAI-compatible API on port 11434
+const ollama = createOpenAI({
+  baseURL: 'http://localhost:11434/v1',
+  apiKey: 'ollama',
+})
+
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL ?? 'gemma2:2b'
 
 const systemPrompt = `You are Mwalimu AI, an expert professional development coach for Kenyan teachers implementing Competency-Based Curriculum (CBC).
 
@@ -22,24 +35,63 @@ Your role is to:
 
 Always be supportive, practical, and encouraging. Reference real classroom scenarios when possible.`
 
+async function isOllamaAvailable(): Promise<boolean> {
+  try {
+    const res = await fetch('http://localhost:11434/api/tags', {
+      signal: AbortSignal.timeout(1500),
+    })
+    return res.ok
+  } catch {
+    return false
+  }
+}
+
 export async function POST(req: Request) {
-  if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
+  const { messages } = await req.json()
+  const converted = await convertToModelMessages(messages)
+
+  // Try Gemini (online) first
+  if (process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
+    try {
+      const result = streamText({
+        model: gemini('gemini-2.0-flash-lite'),
+        system: systemPrompt,
+        messages: converted,
+        temperature: 0.7,
+        maxOutputTokens: 1000,
+        maxRetries: 0,
+      })
+      const response = result.toUIMessageStreamResponse()
+      // Tag which backend served this request
+      response.headers.set('X-AI-Backend', 'gemini')
+      return response
+    } catch {
+      // Gemini failed (quota, network, etc.) — fall through to Ollama
+    }
+  }
+
+  // Fall back to local Ollama
+  const ollamaUp = await isOllamaAvailable()
+  if (!ollamaUp) {
     return Response.json(
-      { error: 'AI service not configured. Please add GOOGLE_GENERATIVE_AI_API_KEY to .env.local' },
+      {
+        error:
+          'No AI backend available. Online: add GOOGLE_GENERATIVE_AI_API_KEY to .env.local. ' +
+          'Offline: install Ollama from https://ollama.com and run: ollama pull gemma2:2b',
+      },
       { status: 503 }
     )
   }
 
-  const { messages } = await req.json()
-
   const result = streamText({
-    model: google('gemini-1.5-flash'),
+    model: ollama(OLLAMA_MODEL),
     system: systemPrompt,
-    messages: await convertToModelMessages(messages),
+    messages: converted,
     temperature: 0.7,
     maxOutputTokens: 1000,
-    maxRetries: 0, // fail fast — retrying quota errors wastes time
+    maxRetries: 0,
   })
-
-  return result.toUIMessageStreamResponse()
+  const response = result.toUIMessageStreamResponse()
+  response.headers.set('X-AI-Backend', 'ollama')
+  return response
 }
