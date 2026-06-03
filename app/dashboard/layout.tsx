@@ -63,8 +63,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="min-h-[100dvh] flex flex-col">
-      {/* Sticky header */}
+    <div
+      className="min-h-[100dvh] flex flex-col"
+      data-sidebar={sidebarCollapsed ? 'collapsed' : 'expanded'}
+    >
       <DashboardHeader
         onLogout={handleLogout}
         onMenuToggle={() => setSidebarOpen(v => !v)}
@@ -72,29 +74,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         onToggleCollapse={handleToggleCollapse}
       />
 
-      {/*
-        Flex row: desktop sidebar (sticky, in flow) + main content.
-        The sidebar takes its natural width; main gets flex-1.
-        No margin-left needed — no fixed positioning on desktop.
-      */}
-      <div className="flex flex-1">
-        <SidebarNav
-          isOpen={sidebarOpen}
-          isCollapsed={sidebarCollapsed}
-          onClose={() => setSidebarOpen(false)}
-          onToggleCollapse={handleToggleCollapse}
-        />
+      {/* Sidebar: position fixed, width driven by .sidebar-nav in the <style> tag */}
+      <SidebarNav
+        isOpen={sidebarOpen}
+        isCollapsed={sidebarCollapsed}
+        onClose={() => setSidebarOpen(false)}
+        onToggleCollapse={handleToggleCollapse}
+      />
 
-        <main
-          id="main-content"
-          tabIndex={-1}
-          className="flex-1 min-w-0 overflow-x-hidden"
-        >
-          <div className="p-4 md:p-6 pb-safe-nav md:pb-6">
-            {children}
-          </div>
-        </main>
-      </div>
+      {/* Main: margin-left driven by .layout-main + [data-sidebar] in the <style> tag */}
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className="layout-main flex-1 min-w-0 overflow-x-hidden"
+      >
+        <div className="p-4 md:p-6 pb-safe-nav md:pb-6">
+          {children}
+        </div>
+      </main>
 
       <MobileBottomNav />
       <OfflineIndicator />
