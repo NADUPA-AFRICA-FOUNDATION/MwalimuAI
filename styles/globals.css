@@ -125,32 +125,3 @@
   }
 }
 
-@layer utilities {
-  /* Bottom padding that accounts for mobile bottom nav + iPhone home bar */
-  .pb-safe-nav {
-    padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
-  }
-}
-
-/*
- * Dashboard sidebar layout — bypasses Tailwind v4 JIT class scanning.
- * md:w-56 / md:w-16 and md:ml-56 / md:ml-16 were only introduced in
- * sidebar-nav.tsx and layout.tsx respectively, so Turbopack never generated
- * them. Both the sidebar width and the content margin are handled here instead,
- * driven by data-sidebar="expanded|collapsed" on the root layout div.
- */
-.sidebar-nav {
-  width: 16rem; /* mobile: always full-width drawer (w-64) */
-}
-.layout-main {
-  transition: margin-left 300ms ease-in-out;
-}
-@media (min-width: 768px) {
-  .sidebar-nav {
-    transition: width 300ms ease-in-out;
-  }
-  [data-sidebar="expanded"]  .sidebar-nav { width: 14rem; } /* = md:w-56 */
-  [data-sidebar="collapsed"] .sidebar-nav { width: 4rem;  } /* = md:w-16 */
-  [data-sidebar="expanded"]  .layout-main { margin-left: 14rem; }
-  [data-sidebar="collapsed"] .layout-main { margin-left: 4rem;  }
-}
