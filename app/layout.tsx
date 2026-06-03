@@ -58,7 +58,7 @@ export default function RootLayout({
         in globals.css, so layout-critical rules that can't be expressed as scanned
         Tailwind classes are injected here as a plain <style> tag instead.
       */}
-      <style>{`
+      <style href="mwalimu-layout" precedence="default">{`
         body { overflow-x: hidden; }
         .sidebar-nav { width: 16rem; }
         .layout-main { transition: margin-left 300ms ease-in-out; }
