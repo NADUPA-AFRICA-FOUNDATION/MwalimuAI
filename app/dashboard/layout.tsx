@@ -7,7 +7,6 @@ import { SidebarNav } from '@/components/sidebar-nav'
 import { MobileBottomNav } from '@/components/mobile-bottom-nav'
 import { OfflineIndicator } from '@/components/offline-indicator'
 import { useProfile } from '@/context/profile-context'
-import { cn } from '@/lib/utils'
 
 const COLLAPSE_KEY = 'mwalimu_sidebar_collapsed'
 
@@ -64,7 +63,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="min-h-[100dvh] flex flex-col">
+    <div className="min-h-[100dvh] flex flex-col" data-sidebar={sidebarCollapsed ? 'collapsed' : 'expanded'}>
       {/* ── Sticky header ─────────────────────────────────────────── */}
       <DashboardHeader
         onLogout={handleLogout}
@@ -81,19 +80,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         onToggleCollapse={handleToggleCollapse}
       />
 
-      {/* ── Main content ─────────────────────────────────────────────
-          ml-0 on mobile (sidebar is a floating drawer, doesn't affect layout).
-          md:ml-56 / md:ml-16 on desktop to account for the fixed sidebar width.
-          transition-[margin] keeps the content shift smooth when collapsing.
-      ──────────────────────────────────────────────────────────────── */}
       <main
         id="main-content"
         tabIndex={-1}
-        className={cn(
-          'flex-1 min-w-0 overflow-x-hidden',
-          'transition-[margin] duration-300 ease-in-out',
-          sidebarCollapsed ? 'md:ml-16' : 'md:ml-56',
-        )}
+        className="layout-main flex-1 min-w-0 overflow-x-hidden"
       >
         {/* Responsive inner padding: compact on mobile, comfortable on desktop */}
         <div className="p-4 md:p-6 pb-safe-nav md:pb-6">

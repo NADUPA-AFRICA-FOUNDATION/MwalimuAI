@@ -121,5 +121,22 @@
   }
   body {
     @apply bg-background text-foreground;
+    overflow-x: hidden;
   }
+}
+
+@layer utilities {
+  /* Bottom padding that accounts for mobile bottom nav + iPhone home bar */
+  .pb-safe-nav {
+    padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* Dashboard sidebar → main-content margin (bypasses Tailwind JIT scanning) */
+.layout-main {
+  transition: margin-left 300ms ease-in-out;
+}
+@media (min-width: 768px) {
+  [data-sidebar="expanded"]  .layout-main { margin-left: 14rem; } /* md:w-56 */
+  [data-sidebar="collapsed"] .layout-main { margin-left: 4rem;  } /* md:w-16 */
 }

@@ -126,7 +126,7 @@ export default function AICoachPage() {
   })()
 
   return (
-    <div className="flex flex-col" style={{ height: 'calc(100vh - 57px)' }}>
+    <div className="flex flex-col -mx-4 -mt-4 md:-mx-8 md:-mt-8" style={{ height: 'calc(100dvh - 57px)' }}>
 
       {/* Back nav + status bar */}
       <div className="px-4 md:px-8 pt-4 pb-2 shrink-0 flex items-center justify-between">
@@ -280,7 +280,7 @@ export default function AICoachPage() {
       </div>
 
       {/* Input bar */}
-      <div className="shrink-0 border-t border-border/50 bg-background/80 backdrop-blur-md px-4 md:px-8 py-4">
+      <div className="shrink-0 border-t border-border/50 bg-background/80 backdrop-blur-md px-4 md:px-8 py-4 pb-20 md:pb-4">
         {error && (
           <div className="flex justify-end mb-2">
             <button
