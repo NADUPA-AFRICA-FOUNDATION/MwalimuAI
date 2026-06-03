@@ -51,7 +51,12 @@ export default function Page() {
     setIsLoading(true)
     try {
       const { user } = await createUserWithEmailAndPassword(auth, email.trim(), password)
-      await sendEmailVerification(user)
+      await sendEmailVerification(user, {
+        // After clicking the link, redirect back to the app (not Firebase's domain).
+        // This URL must be in Firebase Console → Authentication → Settings → Authorized domains.
+        url: `${window.location.origin}/auth/login`,
+        handleCodeInApp: false,
+      })
       router.push('/auth/sign-up-success')
     } catch (err: unknown) {
       const code = (err as { code?: string }).code ?? ''

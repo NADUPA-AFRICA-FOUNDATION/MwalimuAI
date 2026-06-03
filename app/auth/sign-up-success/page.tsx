@@ -33,7 +33,10 @@ export default function Page() {
     }
     setResendState('sending')
     try {
-      await sendEmailVerification(user)
+      await sendEmailVerification(user, {
+        url: `${window.location.origin}/auth/login`,
+        handleCodeInApp: false,
+      })
       setResendState('sent')
     } catch {
       setResendState('idle')
