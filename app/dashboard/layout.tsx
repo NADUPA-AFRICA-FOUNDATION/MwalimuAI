@@ -1,43 +1,62 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { DashboardHeader } from '@/components/dashboard-header'
 import { SidebarNav } from '@/components/sidebar-nav'
 import { MobileBottomNav } from '@/components/mobile-bottom-nav'
 import { OfflineIndicator } from '@/components/offline-indicator'
 import { useProfile } from '@/context/profile-context'
+import { cn } from '@/lib/utils'
+
+const COLLAPSE_KEY = 'mwalimu_sidebar_collapsed'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  // Mobile: overlay drawer open/closed
+  const [sidebarOpen, setSidebarOpen]         = useState(false)
+  // Desktop: icon-only (collapsed) vs expanded
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+
   const router = useRouter()
   const { user, authLoading, profile, mounted, signOut } = useProfile()
 
+  // Restore desktop collapsed preference from localStorage on mount
   useEffect(() => {
-    if (authLoading) return        // wait for Firebase to resolve auth state
-    if (!user) {
-      router.push('/auth/login')   // not authenticated → login
-      return
-    }
-    if (!user.emailVerified) {
-      router.push('/auth/sign-up-success')  // authenticated but unverified → verify
-      return
-    }
-    if (mounted && !profile?.completed) {
-      router.push('/onboarding')   // authenticated but no profile → onboarding
-    }
+    try {
+      setSidebarCollapsed(localStorage.getItem(COLLAPSE_KEY) === 'true')
+    } catch {}
+  }, [])
+
+  // Auth guard
+  useEffect(() => {
+    if (authLoading) return
+    if (!user) { router.push('/auth/login'); return }
+    if (!user.emailVerified) { router.push('/auth/sign-up-success'); return }
+    if (mounted && !profile?.completed) router.push('/onboarding')
   }, [authLoading, user, mounted, profile, router])
 
-  // Show a full-screen spinner while Firebase resolves auth (prevents login flash)
+  const handleToggleCollapse = useCallback(() => {
+    setSidebarCollapsed(prev => {
+      const next = !prev
+      try { localStorage.setItem(COLLAPSE_KEY, String(next)) } catch {}
+      return next
+    })
+  }, [])
+
+  // Auth loading spinner
   if (authLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div role="status" className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin motion-reduce:animate-none" aria-label="Loading…" />
+      <div className="flex min-h-[100dvh] items-center justify-center">
+        <div
+          role="status"
+          aria-label="Loading…"
+          className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin motion-reduce:animate-none"
+        />
       </div>
     )
   }
 
-  if (!user) return null  // redirect already triggered above
+  if (!user) return null
 
   const handleLogout = async () => {
     await signOut()
@@ -45,17 +64,43 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-[100dvh] flex flex-col">
+      {/* ── Sticky header ─────────────────────────────────────────── */}
       <DashboardHeader
         onLogout={handleLogout}
-        onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
+        onMenuToggle={() => setSidebarOpen(v => !v)}
+        sidebarCollapsed={sidebarCollapsed}
+        onToggleCollapse={handleToggleCollapse}
       />
-      <div className="flex">
-        <SidebarNav isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-        <main id="main-content" className="flex-1 overflow-auto" tabIndex={-1}>
-          <div className="p-4 md:p-8 pb-safe-nav md:pb-8">{children}</div>
-        </main>
-      </div>
+
+      {/* ── Fixed sidebar (always fixed; desktop uses ML offset on main) */}
+      <SidebarNav
+        isOpen={sidebarOpen}
+        isCollapsed={sidebarCollapsed}
+        onClose={() => setSidebarOpen(false)}
+        onToggleCollapse={handleToggleCollapse}
+      />
+
+      {/* ── Main content ─────────────────────────────────────────────
+          ml-0 on mobile (sidebar is a floating drawer, doesn't affect layout).
+          md:ml-56 / md:ml-16 on desktop to account for the fixed sidebar width.
+          transition-[margin] keeps the content shift smooth when collapsing.
+      ──────────────────────────────────────────────────────────────── */}
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className={cn(
+          'flex-1 min-w-0 overflow-x-hidden',
+          'transition-[margin] duration-300 ease-in-out',
+          sidebarCollapsed ? 'md:ml-16' : 'md:ml-56',
+        )}
+      >
+        {/* Responsive inner padding: compact on mobile, comfortable on desktop */}
+        <div className="p-4 md:p-6 pb-safe-nav md:pb-6">
+          {children}
+        </div>
+      </main>
+
       <MobileBottomNav />
       <OfflineIndicator />
     </div>
