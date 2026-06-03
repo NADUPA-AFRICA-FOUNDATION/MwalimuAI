@@ -32,6 +32,7 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
+  viewportFit: 'cover',
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: '#f9fcfb' },
     { media: '(prefers-color-scheme: dark)',  color: '#1e2528' },
@@ -46,6 +47,12 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className="bg-background" data-scroll-behavior="smooth">
       <body className="font-sans antialiased">
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:px-4 focus:py-2 focus:bg-background focus:text-foreground focus:rounded-xl focus:shadow-lg focus:border focus:border-border"
+        >
+          Skip to main content
+        </a>
         <GradientBackground />
         <Providers>
           {children}

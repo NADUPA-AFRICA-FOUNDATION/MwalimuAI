@@ -267,6 +267,7 @@ export default function SettingsPage() {
         <div className="grid grid-cols-2 gap-3">
           <button
             onClick={() => { setLang('en'); toast.success('Language set to English') }}
+            aria-pressed={lang === 'en'}
             className={`rounded-xl p-4 border-2 text-left transition-all ${
               lang === 'en' ? 'border-primary bg-primary/5 dark:bg-primary/10' : 'border-border hover:border-primary/40 hover:bg-muted/40'
             }`}
@@ -278,6 +279,7 @@ export default function SettingsPage() {
 
           <button
             onClick={() => { setLang('sw'); toast.success('Lugha imewekwa kwa Kiswahili') }}
+            aria-pressed={lang === 'sw'}
             className={`rounded-xl p-4 border-2 text-left transition-all ${
               lang === 'sw' ? 'border-primary bg-primary/5 dark:bg-primary/10' : 'border-border hover:border-primary/40 hover:bg-muted/40'
             }`}

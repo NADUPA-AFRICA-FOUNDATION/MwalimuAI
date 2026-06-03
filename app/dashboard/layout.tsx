@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { DashboardHeader } from '@/components/dashboard-header'
 import { SidebarNav } from '@/components/sidebar-nav'
+import { MobileBottomNav } from '@/components/mobile-bottom-nav'
 import { useProfile } from '@/context/profile-context'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -30,7 +31,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (authLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin" aria-label="Loading…" />
+        <div role="status" className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin motion-reduce:animate-none" aria-label="Loading…" />
       </div>
     )
   }
@@ -51,9 +52,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <div className="flex">
         <SidebarNav isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <main id="main-content" className="flex-1 overflow-auto" tabIndex={-1}>
-          <div className="p-4 md:p-8">{children}</div>
+          <div className="p-4 md:p-8 pb-safe-nav md:pb-8">{children}</div>
         </main>
       </div>
+      <MobileBottomNav />
     </div>
   )
 }

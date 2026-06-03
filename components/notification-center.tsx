@@ -178,7 +178,7 @@ export function NotificationCenter() {
       {/* Dropdown */}
       {isOpen && (
         <div
-          className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-card border border-border rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200"
+          className="absolute right-0 top-full mt-2 w-[calc(100vw-2rem)] max-w-[24rem] bg-card border border-border rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200"
           role="dialog"
           aria-label="Notifications"
           aria-modal="false"
@@ -220,60 +220,53 @@ export function NotificationCenter() {
                   return (
                     <li
                       key={notification.id}
-                      className={cn(
-                        'group relative px-4 py-3 hover:bg-muted/50 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary',
-                        !notification.read && 'bg-primary/5'
-                      )}
-                      onClick={() => handleNotificationClick(notification)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault()
-                          handleNotificationClick(notification)
-                        }
-                      }}
-                      tabIndex={0}
-                      role="button"
-                      aria-label={`${notification.title}${!notification.read ? ' (unread)' : ''}`}
+                      className={cn('group relative flex items-stretch', !notification.read && 'bg-primary/5')}
                     >
-                      <div className="flex gap-3">
-                        <div
-                          className={cn('flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center', notificationColors[notification.type])}
-                          aria-hidden="true"
-                        >
-                          <Icon className="w-4 h-4" aria-hidden="true" />
-                        </div>
-
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2">
-                            <p className={cn('text-sm font-medium truncate', !notification.read && 'text-foreground')}>
-                              {notification.title}
-                            </p>
-                            {!notification.read && (
-                              <span className="flex-shrink-0 w-2 h-2 bg-primary rounded-full mt-1.5" aria-hidden="true" />
-                            )}
-                          </div>
-                          <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{notification.message}</p>
-                          <p className="text-[10px] text-muted-foreground/70 mt-1">{notification.time}</p>
-                        </div>
-
-                        <div className="flex-shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          {!notification.read && (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); markAsRead(notification.id) }}
-                              className="p-1.5 hover:bg-background rounded-lg transition-colors focus-visible:ring-2 focus-visible:ring-ring"
-                              aria-label="Mark as read"
-                            >
-                              <Check className="w-3.5 h-3.5 text-muted-foreground" aria-hidden="true" />
-                            </button>
-                          )}
-                          <button
-                            onClick={(e) => { e.stopPropagation(); deleteNotification(notification.id) }}
-                            className="p-1.5 hover:bg-background rounded-lg transition-colors focus-visible:ring-2 focus-visible:ring-ring"
-                            aria-label="Delete notification"
+                      {/* Main clickable area — no nested buttons inside */}
+                      <button
+                        className="flex-1 text-left px-4 py-3 hover:bg-muted/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+                        onClick={() => handleNotificationClick(notification)}
+                        aria-label={`${notification.title}${!notification.read ? ' (unread)' : ''}`}
+                      >
+                        <div className="flex gap-3">
+                          <div
+                            className={cn('flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center', notificationColors[notification.type])}
+                            aria-hidden="true"
                           >
-                            <Trash2 className="w-3.5 h-3.5 text-muted-foreground" aria-hidden="true" />
-                          </button>
+                            <Icon className="w-4 h-4" aria-hidden="true" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-2">
+                              <p className={cn('text-sm font-medium truncate', !notification.read && 'text-foreground')}>
+                                {notification.title}
+                              </p>
+                              {!notification.read && (
+                                <span className="flex-shrink-0 w-2 h-2 bg-primary rounded-full mt-1.5" aria-hidden="true" />
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{notification.message}</p>
+                            <p className="text-[10px] text-muted-foreground/70 mt-1">{notification.time}</p>
+                          </div>
                         </div>
+                      </button>
+                      {/* Action buttons — siblings of main button, shown on hover/focus */}
+                      <div className="flex items-center gap-1 pr-2 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                        {!notification.read && (
+                          <button
+                            onClick={() => markAsRead(notification.id)}
+                            className="p-1.5 hover:bg-background rounded-lg transition-colors focus-visible:ring-2 focus-visible:ring-ring"
+                            aria-label="Mark as read"
+                          >
+                            <Check className="w-3.5 h-3.5 text-muted-foreground" aria-hidden="true" />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => deleteNotification(notification.id)}
+                          className="p-1.5 hover:bg-background rounded-lg transition-colors focus-visible:ring-2 focus-visible:ring-ring"
+                          aria-label="Delete notification"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 text-muted-foreground" aria-hidden="true" />
+                        </button>
                       </div>
                     </li>
                   )

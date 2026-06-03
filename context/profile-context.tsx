@@ -160,6 +160,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
 
   const setLang = useCallback((l: Lang) => {
     setLangState(l)
+    if (typeof window !== 'undefined') document.documentElement.lang = l === 'sw' ? 'sw' : 'en'
     try { localStorage.setItem(LANG_KEY, l) } catch {}
     if (user) {
       setDoc(doc(db, 'users', user.uid), { lang: l }, { merge: true }).catch(() => {})
@@ -169,6 +170,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const toggleLang = useCallback(() => {
     setLangState(prev => {
       const next: Lang = prev === 'en' ? 'sw' : 'en'
+      if (typeof window !== 'undefined') document.documentElement.lang = next === 'sw' ? 'sw' : 'en'
       try { localStorage.setItem(LANG_KEY, next) } catch {}
       if (user) {
         setDoc(doc(db, 'users', user.uid), { lang: next }, { merge: true }).catch(() => {})

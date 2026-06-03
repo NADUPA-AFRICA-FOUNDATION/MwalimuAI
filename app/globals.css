@@ -583,6 +583,7 @@ html[data-a11y-contrast].dark :focus-visible { outline: 3px solid #fff; }
 @media (prefers-reduced-motion: reduce) {
   .animate-blob,
   .animate-float,
+  .animate-spin,
   .animate-spin-slow,
   .animate-fade-in-up,
   .animate-fade-in,

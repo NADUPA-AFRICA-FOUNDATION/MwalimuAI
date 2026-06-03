@@ -239,8 +239,9 @@ export default function CommunityPage() {
       {/* Search + New Post */}
       <div className="flex gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
           <Input
+            aria-label="Search discussions"
             placeholder="Search discussions…"
             value={search}
             onChange={e => setSearch(e.target.value)}
@@ -258,8 +259,9 @@ export default function CommunityPage() {
         <div className="glass rounded-2xl p-6 space-y-4 border border-primary/20">
           <h2 className="font-semibold text-sm">Start a New Discussion</h2>
           <div className="space-y-1.5">
-            <Label className="text-sm font-medium">Title *</Label>
+            <Label htmlFor="post-title" className="text-sm font-medium">Title *</Label>
             <Input
+              id="post-title"
               placeholder="What do you want to discuss?"
               value={newForm.title}
               onChange={e => setNewForm(f => ({ ...f, title: e.target.value }))}
@@ -267,8 +269,9 @@ export default function CommunityPage() {
             />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-sm font-medium">Your message *</Label>
+            <Label htmlFor="post-body" className="text-sm font-medium">Your message *</Label>
             <Textarea
+              id="post-body"
               placeholder="Share context, ask a question, or start the conversation…"
               value={newForm.body}
               onChange={e => setNewForm(f => ({ ...f, body: e.target.value }))}
@@ -277,9 +280,9 @@ export default function CommunityPage() {
             />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-sm font-medium">Category *</Label>
+            <Label htmlFor="post-category" className="text-sm font-medium">Category *</Label>
             <Select value={newForm.category} onValueChange={v => setNewForm(f => ({ ...f, category: v }))}>
-              <SelectTrigger className="rounded-xl">
+              <SelectTrigger id="post-category" className="rounded-xl">
                 <SelectValue placeholder="Select a category" />
               </SelectTrigger>
               <SelectContent>
@@ -303,6 +306,7 @@ export default function CommunityPage() {
           <button
             key={c}
             onClick={() => setFilter(c)}
+            aria-pressed={filter === c}
             className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
               filter === c
                 ? 'bg-primary text-primary-foreground shadow-sm'
@@ -338,6 +342,7 @@ export default function CommunityPage() {
                 <button
                   className="w-full text-left px-5 pt-5 pb-3 hover:bg-muted/20 transition-colors"
                   onClick={() => setExpanded(isOpen ? null : post.id)}
+                  aria-expanded={isOpen}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
@@ -438,6 +443,7 @@ export default function CommunityPage() {
                       <div className="flex-1 flex gap-2">
                         <Input
                           ref={el => { replyInputRefs.current[post.id] = el }}
+                          aria-label={`Reply to: ${post.title}`}
                           placeholder="Write a reply…"
                           value={replyBoxes[post.id] ?? ''}
                           onChange={e => setReplyBoxes(prev => ({ ...prev, [post.id]: e.target.value }))}

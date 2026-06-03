@@ -124,13 +124,14 @@ function MultiSelect({ options, selected, onChange }: {
           key={o}
           type="button"
           onClick={() => toggle(o)}
+          aria-pressed={selected.includes(o)}
           className={`px-3 py-1.5 rounded-xl text-sm font-medium border transition-all duration-150 ${
             selected.includes(o)
               ? 'bg-primary/10 border-primary/50 text-foreground'
               : 'bg-transparent border-border/50 text-muted-foreground hover:border-border hover:text-foreground hover:bg-muted/40'
           }`}
         >
-          {selected.includes(o) && <Check className="w-3.5 h-3.5 text-primary mr-1 shrink-0" />}
+          {selected.includes(o) && <Check className="w-3.5 h-3.5 text-primary mr-1 shrink-0" aria-hidden="true" />}
           {o}
         </button>
       ))}
@@ -265,12 +266,16 @@ export default function OnboardingPage() {
               </div>
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">{t('onboard.subjects')} *</Label>
-                  <MultiSelect options={SUBJECTS} selected={form.subjects} onChange={v => set('subjects')(v)} />
+                  <span id="subjects-label" className="text-sm font-medium">{t('onboard.subjects')} *</span>
+                  <div role="group" aria-labelledby="subjects-label">
+                    <MultiSelect options={SUBJECTS} selected={form.subjects} onChange={v => set('subjects')(v)} />
+                  </div>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">{t('onboard.grades')} *</Label>
-                  <MultiSelect options={GRADES} selected={form.grades} onChange={v => set('grades')(v)} />
+                  <span id="grades-label" className="text-sm font-medium">{t('onboard.grades')} *</span>
+                  <div role="group" aria-labelledby="grades-label">
+                    <MultiSelect options={GRADES} selected={form.grades} onChange={v => set('grades')(v)} />
+                  </div>
                 </div>
               </div>
               <div className="flex gap-2">
@@ -297,6 +302,7 @@ export default function OnboardingPage() {
                     key={value}
                     type="button"
                     onClick={() => set('cbcLevel')(value)}
+                    aria-pressed={form.cbcLevel === value}
                     className={`w-full text-left px-5 py-4 rounded-2xl border-2 transition-all duration-150 ${
                       form.cbcLevel === value ? 'border-primary bg-primary/8' : 'border-border/50 hover:border-border hover:bg-muted/40'
                     }`}
@@ -348,6 +354,7 @@ export default function OnboardingPage() {
                             next[qi] = oi
                             setQuizAnswers(next)
                           }}
+                          aria-pressed={quizAnswers[qi] === oi}
                           className={`w-full text-left px-3.5 py-2.5 rounded-xl border text-sm transition-all duration-150 ${
                             quizAnswers[qi] === oi
                               ? 'border-primary bg-primary/8 font-medium'
