@@ -7,21 +7,38 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { BackButton } from '@/components/back-button'
 import { Progress } from '@/components/ui/progress'
-import { 
-  BookOpen, 
-  Clock, 
-  PlayCircle, 
-  FileText, 
+import {
+  BookOpen,
+  Clock,
+  PlayCircle,
+  FileText,
   HelpCircle,
   Activity,
   CheckCircle,
   Circle,
   ChevronRight,
   Target,
-  AlertCircle
+  AlertCircle,
+  BookMarked,
+  ClipboardCheck,
+  Users,
+  Monitor,
+  School,
+  FileEdit,
+  type LucideIcon,
 } from 'lucide-react'
 import Link from 'next/link'
 import { getModuleById, type Lesson } from '@/lib/modules-data'
+
+const MODULE_ICONS: Record<string, LucideIcon> = {
+  CBC: BookMarked,
+  CBA: ClipboardCheck,
+  FA:  Target,
+  INC: Users,
+  DIG: Monitor,
+  JSS: School,
+  LP:  FileEdit,
+}
 
 const lessonTypeIcons = {
   video: PlayCircle,
@@ -88,7 +105,7 @@ export default function ModuleDetailPage() {
       <div className="flex flex-col lg:flex-row gap-8">
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-4">
-            <span className="text-4xl">{module.icon}</span>
+            {(() => { const Icon = MODULE_ICONS[module.icon] ?? BookOpen; return <Icon className="w-9 h-9 text-primary" aria-hidden="true" /> })()}
             <div>
               <Badge className={difficultyColors[module.difficulty]}>
                 {module.difficulty}

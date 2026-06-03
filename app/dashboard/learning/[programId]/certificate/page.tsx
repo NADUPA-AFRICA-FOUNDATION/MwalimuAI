@@ -17,7 +17,8 @@ export default function CertificatePage() {
 
   const [progress, setProgress] = useState({ completedLessons: [] as string[], reflections: {} as Record<string, string>, certificateEarnedAt: undefined as string | undefined, postAssessment: undefined as { score: number; total: number } | undefined })
   const [mounted, setMounted]   = useState(false)
-  const [shared, setShared]     = useState(false)
+  const [shared, setShared]         = useState(false)
+  const [isPrinting, setIsPrinting] = useState(false)
   const certRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -38,165 +39,27 @@ export default function CertificatePage() {
   const teacherName = profile?.name ?? 'Teacher'
   const postScore   = progress.postAssessment ? `${progress.postAssessment.score}/${progress.postAssessment.total}` : null
 
-  const handlePrint = () => {
-    const win = window.open('', '_blank', 'width=1000,height=720')
-    if (!win) return
-    const certHtml = certRef.current?.innerHTML ?? ''
-    win.document.write(`<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>${program.title} — Certificate of Completion</title>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: 'Segoe UI', system-ui, sans-serif;
-      background: #f3f4f6;
-      display: flex; align-items: center; justify-content: center;
-      min-height: 100vh;
-      padding: 32px;
-    }
-    .cert-wrap {
-      background: #fff;
-      max-width: 780px;
-      width: 100%;
-      border-radius: 24px;
-      overflow: hidden;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.15);
-      position: relative;
-    }
-    .cert-wrap::before, .cert-wrap::after {
-      content: '';
-      position: absolute;
-      border-radius: inherit;
-      pointer-events: none;
-    }
-    .cert-wrap::before {
-      inset: 12px;
-      border: 2px solid rgba(99,102,241,0.18);
-      border-radius: 14px;
-    }
-    .cert-wrap::after {
-      inset: 16px;
-      border: 1px solid rgba(99,102,241,0.09);
-      border-radius: 10px;
-    }
-    .top-bar { height: 8px; background: linear-gradient(90deg, #6366f1, #8b5cf6, #6366f1); }
-    .body { padding: 48px 56px 40px; text-align: center; }
-    .logo-row { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 28px; }
-    .logo-icon {
-      width: 52px; height: 52px;
-      background: linear-gradient(135deg, #6366f1, #8b5cf6);
-      border-radius: 14px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 24px; color: #fff; font-weight: 800;
-      box-shadow: 0 6px 20px rgba(99,102,241,0.35);
-    }
-    .logo-text-name { font-size: 18px; font-weight: 800; color: #1a1a2e; }
-    .logo-text-sub  { font-size: 12px; color: #888; }
-    .cert-badge {
-      display: inline-flex; align-items: center; gap: 6px;
-      background: #6366f115; color: #6366f1;
-      border-radius: 30px; padding: 5px 16px;
-      font-size: 12px; font-weight: 700; letter-spacing: 0.05em;
-      text-transform: uppercase; margin-bottom: 18px;
-    }
-    .cert-this { font-size: 14px; color: #888; margin-bottom: 6px; }
-    .cert-name {
-      font-size: 42px; font-weight: 800; color: #1a1a2e;
-      font-family: Georgia, serif; letter-spacing: -0.5px; line-height: 1.1;
-      margin-bottom: 6px;
-    }
-    .cert-has   { font-size: 14px; color: #888; margin-bottom: 0; }
-    .program-box {
-      border-top: 1px solid #e8e8f5;
-      border-bottom: 1px solid #e8e8f5;
-      padding: 20px 0; margin: 18px 0;
-    }
-    .program-title { font-size: 22px; font-weight: 800; color: #1a1a2e; margin-bottom: 3px; }
-    .program-sub   { font-size: 13px; color: #6366f1; font-weight: 600; margin-bottom: 4px; }
-    .program-align { font-size: 11px; color: #aaa; }
-    .skills-label  { font-size: 10px; color: #aaa; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px; }
-    .skills-row    { display: flex; flex-wrap: wrap; justify-content: center; gap: 7px; margin-bottom: 14px; }
-    .skill-chip    {
-      background: #6366f108; color: #6366f1;
-      border: 1px solid #6366f125;
-      border-radius: 20px; padding: 4px 12px;
-      font-size: 11px; font-weight: 600;
-    }
-    .score-line { font-size: 12px; color: #aaa; margin-bottom: 16px; }
-    .score-line strong { color: #6366f1; font-weight: 700; }
-    .footer-row {
-      display: flex; justify-content: space-between; align-items: flex-end;
-      padding-top: 16px; border-top: 1px solid #f0f0f8;
-    }
-    .footer-col { text-align: left; }
-    .footer-col:last-child { text-align: right; }
-    .footer-col.center { text-align: center; }
-    .footer-label { font-size: 11px; color: #bbb; margin-bottom: 2px; }
-    .footer-value { font-size: 13px; font-weight: 700; color: #444; }
-    .sig-name {
-      font-size: 22px; font-weight: 700; color: #6366f1;
-      font-family: 'Brush Script MT', 'Segoe Script', cursive;
-      margin-bottom: 3px;
-    }
-    .sig-line { width: 100px; height: 1px; background: #e0e0ea; margin: 3px auto; }
-    .sig-label { font-size: 10px; color: #bbb; }
-    .bottom-bar { height: 5px; background: linear-gradient(90deg, #8b5cf6, #6366f1, #8b5cf6); }
-    @media print {
-      body { background: #fff; padding: 0; min-height: auto; }
-      .cert-wrap { box-shadow: none; border-radius: 0; max-width: 100%; }
-      @page { margin: 10mm; size: A4 landscape; }
-    }
-  </style>
-</head>
-<body>
-<div class="cert-wrap">
-  <div class="top-bar"></div>
-  <div class="body">
-    <div class="logo-row">
-      <div class="logo-icon">M</div>
-      <div>
-        <div class="logo-text-name">Mwalimu AI</div>
-        <div class="logo-text-sub">Professional Development Platform</div>
-      </div>
-    </div>
-    <div class="cert-badge">🎓 Certificate of Completion</div>
-    <div class="cert-this">This is to certify that</div>
-    <div class="cert-name">${teacherName}</div>
-    <div class="cert-has">has successfully completed the</div>
-    <div class="program-box">
-      <div class="program-title">${program.title}</div>
-      <div class="program-sub">${program.certificate.subtitle}</div>
-      <div class="program-align">${program.kicdAlignment}</div>
-    </div>
-    <div class="skills-label">Competencies Demonstrated</div>
-    <div class="skills-row">
-      ${program.certificate.skills.map(s => `<span class="skill-chip">✓ ${s}</span>`).join('')}
-    </div>
-    ${postScore ? `<div class="score-line">Post-Assessment Score: <strong>${postScore}</strong></div>` : ''}
-    <div class="footer-row">
-      <div class="footer-col">
-        <div class="footer-label">Completed</div>
-        <div class="footer-value">${earnedDate}</div>
-      </div>
-      <div class="footer-col center">
-        <div class="sig-name">Mwalimu AI</div>
-        <div class="sig-line"></div>
-        <div class="sig-label">Authorised Signature</div>
-      </div>
-      <div class="footer-col">
-        <div class="footer-label">Duration</div>
-        <div class="footer-value">${program.hours} hours</div>
-      </div>
-    </div>
-  </div>
-  <div class="bottom-bar"></div>
-</div>
-<script>window.onload = function() { window.print(); }<\/script>
-</body>
-</html>`)
-    win.document.close()
+  const handlePrint = async () => {
+    if (!certRef.current) return
+    setIsPrinting(true)
+    try {
+      const { default: html2canvas } = await import('html2canvas')
+      const { jsPDF } = await import('jspdf')
+      await document.fonts.ready
+      const canvas = await html2canvas(certRef.current, {
+        scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff',
+      })
+      const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
+      // A4 landscape: 297mm × 210mm
+      const imgData = canvas.toDataURL('image/jpeg', 0.95)
+      const ratio   = canvas.width / canvas.height
+      const pdfW    = 297
+      const pdfH    = pdfW / ratio
+      const yOffset = Math.max(0, (210 - pdfH) / 2)
+      pdf.addImage(imgData, 'JPEG', 0, yOffset, pdfW, pdfH)
+      const safeName = (program.title ?? 'Certificate').replace(/[^a-z0-9 ]/gi, '_').slice(0, 60)
+      pdf.save(`${safeName}_Certificate.pdf`)
+    } finally { setIsPrinting(false) }
   }
 
   const handleShare = async () => {
@@ -243,8 +106,8 @@ export default function CertificatePage() {
               <Share2 className="w-4 h-4" />
               {shared ? 'Copied!' : 'Share'}
             </Button>
-            <Button size="sm" onClick={handlePrint} className="rounded-xl gap-2">
-              <Printer className="w-4 h-4" /> Save as PDF
+            <Button size="sm" onClick={handlePrint} disabled={isPrinting} className="rounded-xl gap-2">
+              {isPrinting ? 'Generating…' : <><Printer className="w-4 h-4" /> Save as PDF</>}
             </Button>
           </div>
         </div>

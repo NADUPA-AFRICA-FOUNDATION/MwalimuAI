@@ -7,7 +7,7 @@ import { Progress } from '@/components/ui/progress'
 import { BackButton } from '@/components/back-button'
 import { useProfile } from '@/context/profile-context'
 import { recordActivity } from '@/lib/streak'
-import { PenLine, RefreshCw, ChevronDown, ChevronUp, Calendar, Flame, Sparkles, Lock } from 'lucide-react'
+import { PenLine, RefreshCw, ChevronDown, ChevronUp, Calendar, Flame, Sparkles, Lock, CheckCircle, Laugh, Smile, Meh, Frown, Annoyed, type LucideIcon } from 'lucide-react'
 import {
   collection, doc, getDocs, setDoc, serverTimestamp, query, orderBy,
 } from 'firebase/firestore'
@@ -15,12 +15,12 @@ import { db } from '@/lib/firebase'
 
 const JOURNAL_KEY = 'mwalimu_journal'
 
-const MOODS = [
-  { emoji: '😄', label: 'Energised',  value: 5, color: 'text-green-600 dark:text-green-400' },
-  { emoji: '🙂', label: 'Good',       value: 4, color: 'text-blue-600 dark:text-blue-400'   },
-  { emoji: '😐', label: 'Okay',       value: 3, color: 'text-yellow-600 dark:text-yellow-400'},
-  { emoji: '😔', label: 'Tired',      value: 2, color: 'text-orange-600 dark:text-orange-400'},
-  { emoji: '😰', label: 'Stressed',   value: 1, color: 'text-red-600 dark:text-red-400'     },
+const MOODS: { icon: LucideIcon; label: string; value: number; color: string }[] = [
+  { icon: Laugh,   label: 'Energised', value: 5, color: 'text-green-600 dark:text-green-400'  },
+  { icon: Smile,   label: 'Good',      value: 4, color: 'text-blue-600 dark:text-blue-400'    },
+  { icon: Meh,     label: 'Okay',      value: 3, color: 'text-yellow-600 dark:text-yellow-400'},
+  { icon: Frown,   label: 'Tired',     value: 2, color: 'text-orange-600 dark:text-orange-400'},
+  { icon: Annoyed, label: 'Stressed',  value: 1, color: 'text-red-600 dark:text-red-400'      },
 ]
 
 const PROMPTS: string[] = [
@@ -82,8 +82,8 @@ function getDailyPrompt(): string {
   return PROMPTS[dayOfYear % PROMPTS.length]
 }
 
-const MOOD_LABELS: Record<number, { label: string; emoji: string }> =
-  Object.fromEntries(MOODS.map(m => [m.value, { label: m.label, emoji: m.emoji }]))
+const MOOD_LABELS: Record<number, { label: string; icon: LucideIcon; color: string }> =
+  Object.fromEntries(MOODS.map(m => [m.value, { label: m.label, icon: m.icon, color: m.color }]))
 
 export default function JournalPage() {
   const { user } = useProfile()
@@ -227,8 +227,8 @@ export default function JournalPage() {
             )}
             {avgMood !== null && (
               <div>
-                <p className="text-lg font-bold text-foreground" aria-hidden="true">
-                  {MOOD_LABELS[Math.round(avgMood)]?.emoji ?? '🙂'}
+                <p className="text-lg font-bold text-foreground flex justify-center" aria-hidden="true">
+                  {(() => { const m = MOOD_LABELS[Math.round(avgMood)]; return m ? <m.icon className={`w-5 h-5 ${m.color}`} /> : <Smile className="w-5 h-5" /> })()}
                 </p>
                 <p className="text-xs text-muted-foreground">avg mood</p>
               </div>
@@ -279,7 +279,7 @@ export default function JournalPage() {
                     mood === m.value ? 'border-primary bg-primary/8' : 'border-border/50 hover:border-border hover:bg-muted/30'
                   }`}
                 >
-                  <span className="text-xl" aria-hidden="true">{m.emoji}</span>
+                  <m.icon className={`w-5 h-5 ${mood === m.value ? m.color : 'text-muted-foreground'}`} aria-hidden="true" />
                   <span className={`text-[10px] font-medium mt-0.5 ${mood === m.value ? 'text-primary' : 'text-muted-foreground'}`}>
                     {m.label}
                   </span>
@@ -316,8 +316,8 @@ export default function JournalPage() {
               Save Entry
             </Button>
             {saved && (
-              <p className="text-sm text-primary font-medium animate-in fade-in" role="status">
-                Saved ✓
+              <p className="flex items-center gap-1.5 text-sm text-primary font-medium animate-in fade-in" role="status">
+                <CheckCircle className="w-4 h-4" aria-hidden="true" /> Saved
               </p>
             )}
             {(!content.trim() || !mood) && content.length === 0 && (
@@ -328,7 +328,7 @@ export default function JournalPage() {
       ) : (
         <div className="glass rounded-2xl p-6">
           <div className="flex items-center gap-3 mb-3">
-            <span className="text-2xl" aria-hidden="true">{MOOD_LABELS[todayEntry.mood]?.emoji}</span>
+            {(() => { const m = MOOD_LABELS[todayEntry.mood]; return m ? <m.icon className={`w-6 h-6 shrink-0 ${m.color}`} aria-hidden="true" /> : null })()}
             <div>
               <p className="font-semibold text-sm">Today&apos;s entry saved</p>
               <p className="text-xs text-muted-foreground">{todayEntry.displayDate} · {MOOD_LABELS[todayEntry.mood]?.label}</p>
@@ -369,7 +369,7 @@ export default function JournalPage() {
                     onClick={() => setExpandedId(isOpen ? null : entry.id)}
                     aria-expanded={isOpen}
                   >
-                    <span className="text-lg shrink-0" aria-hidden="true">{MOOD_LABELS[entry.mood]?.emoji ?? '🙂'}</span>
+                    {(() => { const m = MOOD_LABELS[entry.mood]; return m ? <m.icon className={`w-5 h-5 shrink-0 ${m.color}`} aria-hidden="true" /> : <Smile className="w-5 h-5 shrink-0 text-muted-foreground" aria-hidden="true" /> })()}
                     <div className="flex-1 min-w-0">
                       <p className="text-xs text-muted-foreground mb-0.5">{entry.displayDate}</p>
                       <p className="text-sm text-muted-foreground truncate">{entry.content.slice(0, 90)}…</p>

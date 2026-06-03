@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { authedFetch } from '@/lib/authed-fetch'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -63,7 +64,7 @@ export default function ParentCommsPage() {
     setError(null)
 
     try {
-      const res = await fetch('/api/tools', {
+      const res = await authedFetch('/api/tools', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tool: 'parent-comms', prompt: buildPrompt(form) }),

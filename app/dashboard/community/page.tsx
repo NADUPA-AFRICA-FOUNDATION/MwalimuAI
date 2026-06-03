@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -10,7 +10,7 @@ import { BackButton } from '@/components/back-button'
 import { useProfile } from '@/context/profile-context'
 import {
   MessageCircle, Heart, Search, Plus, X, ChevronDown,
-  ChevronUp, Send, Users, ArrowLeft,
+  ChevronUp, Send, Users,
 } from 'lucide-react'
 
 const COMMUNITY_KEY = 'mwalimu_community'
@@ -133,6 +133,7 @@ export default function CommunityPage() {
   const [showNew, setShowNew]       = useState(false)
   const [replyBoxes, setReplyBoxes] = useState<Record<string, string>>({})
   const [mounted, setMounted]       = useState(false)
+  const replyInputRefs              = useRef<Record<string, HTMLInputElement | null>>({})
 
   const [newForm, setNewForm] = useState({ title: '', body: '', category: '' })
 
@@ -151,14 +152,24 @@ export default function CommunityPage() {
     return matchCat && matchSearch
   })
 
-  const toggleLike = (postId: string) => {
-    const updated = posts.map(p => {
-      if (p.id !== postId) return p
-      const liked = p.likes.includes(userId)
-      return { ...p, likes: liked ? p.likes.filter(l => l !== userId) : [...p.likes, userId] }
+  const toggleLike = (postId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    e.preventDefault()
+    setPosts(prev => {
+      const updated = prev.map(p => {
+        if (p.id !== postId) return p
+        const liked = p.likes.includes(userId)
+        return { ...p, likes: liked ? p.likes.filter(l => l !== userId) : [...p.likes, userId] }
+      })
+      savePosts(updated)
+      return updated
     })
-    setPosts(updated)
-    savePosts(updated)
+  }
+
+  const openAndFocusReply = (postId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setExpanded(postId)
+    setTimeout(() => replyInputRefs.current[postId]?.focus(), 50)
   }
 
   const submitReply = (postId: string) => {
@@ -171,11 +182,13 @@ export default function CommunityPage() {
       body,
       timestamp: 'Just now',
     }
-    const updated = posts.map(p =>
-      p.id === postId ? { ...p, replies: [...p.replies, reply] } : p
-    )
-    setPosts(updated)
-    savePosts(updated)
+    setPosts(prev => {
+      const updated = prev.map(p =>
+        p.id === postId ? { ...p, replies: [...p.replies, reply] } : p
+      )
+      savePosts(updated)
+      return updated
+    })
     setReplyBoxes(prev => ({ ...prev, [postId]: '' }))
   }
 
@@ -193,16 +206,18 @@ export default function CommunityPage() {
       likes: [],
       replies: [],
     }
-    const updated = [post, ...posts]
-    setPosts(updated)
-    savePosts(updated)
+    setPosts(prev => {
+      const updated = [post, ...prev]
+      savePosts(updated)
+      return updated
+    })
     setNewForm({ title: '', body: '', category: '' })
     setShowNew(false)
     setExpanded(post.id)
   }
 
-  const totalPosts    = posts.length
-  const totalReplies  = posts.reduce((s, p) => s + p.replies.length, 0)
+  const totalPosts   = posts.length
+  const totalReplies = posts.reduce((s, p) => s + p.replies.length, 0)
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -311,17 +326,17 @@ export default function CommunityPage() {
       ) : (
         <div className="space-y-3">
           {filtered.map(post => {
-            const isOpen   = expanded === post.id
-            const liked    = post.likes.includes(userId)
+            const isOpen = expanded === post.id
+            const liked  = post.likes.includes(userId)
 
             return (
               <div
                 key={post.id}
                 className={`glass rounded-2xl overflow-hidden transition-all duration-200 ${isOpen ? 'ring-1 ring-primary/20' : ''}`}
               >
-                {/* Post header */}
+                {/* Clickable expand area — only covers title, category, body preview */}
                 <button
-                  className="w-full text-left p-5 hover:bg-muted/20 transition-colors"
+                  className="w-full text-left px-5 pt-5 pb-3 hover:bg-muted/20 transition-colors"
                   onClick={() => setExpanded(isOpen ? null : post.id)}
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -339,46 +354,58 @@ export default function CommunityPage() {
                         <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">{post.body}</p>
                       )}
                     </div>
-                    <div className="shrink-0 flex flex-col items-end gap-2">
-                      {isOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-[9px] font-bold text-primary">
-                        {post.initials}
-                      </div>
-                      <span>{post.author}</span>
-                    </div>
-                    <span>{post.timestamp}</span>
-                    <div className="flex items-center gap-0.5 ml-auto">
-                      <MessageCircle className="w-3.5 h-3.5" />
-                      <span>{post.replies.length}</span>
-                    </div>
-                    <div className={`flex items-center gap-0.5 ${liked ? 'text-red-500' : ''}`}>
-                      <Heart className={`w-3.5 h-3.5 ${liked ? 'fill-red-500' : ''}`} />
-                      <span>{post.likes.length}</span>
+                    <div className="shrink-0">
+                      {isOpen
+                        ? <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                        : <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                      }
                     </div>
                   </div>
                 </button>
+
+                {/* Action bar — always visible, outside the expand button */}
+                <div className="flex items-center gap-3 px-5 pb-4 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-[9px] font-bold text-primary">
+                      {post.initials}
+                    </div>
+                    <span>{post.author}</span>
+                  </div>
+                  <span className="hidden sm:inline">{post.timestamp}</span>
+
+                  <div className="ml-auto flex items-center gap-3">
+                    {/* Comment button — expands post and focuses reply input */}
+                    <button
+                      onClick={e => openAndFocusReply(post.id, e)}
+                      className="flex items-center gap-1 hover:text-foreground transition-colors"
+                      aria-label={`${post.replies.length} replies — click to reply`}
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                      <span>{post.replies.length}</span>
+                    </button>
+
+                    {/* Like button — always interactive, no expansion needed */}
+                    <button
+                      onClick={e => toggleLike(post.id, e)}
+                      className={`flex items-center gap-1 transition-colors ${
+                        liked
+                          ? 'text-red-500 hover:text-red-600'
+                          : 'hover:text-red-500'
+                      }`}
+                      aria-label={liked ? 'Unlike this post' : 'Like this post'}
+                      aria-pressed={liked}
+                    >
+                      <Heart className={`w-3.5 h-3.5 transition-all ${liked ? 'fill-red-500 scale-110' : ''}`} />
+                      <span>{post.likes.length}</span>
+                    </button>
+                  </div>
+                </div>
 
                 {/* Expanded content */}
                 {isOpen && (
                   <div className="border-t border-border/40 px-5 pb-5">
                     {/* Full body */}
                     <p className="text-sm text-muted-foreground leading-relaxed py-4">{post.body}</p>
-
-                    {/* Like button */}
-                    <button
-                      onClick={e => { e.stopPropagation(); toggleLike(post.id) }}
-                      className={`flex items-center gap-1.5 text-xs font-medium mb-5 transition-colors ${
-                        liked ? 'text-red-500' : 'text-muted-foreground hover:text-red-500'
-                      }`}
-                    >
-                      <Heart className={`w-4 h-4 ${liked ? 'fill-red-500' : ''}`} />
-                      {liked ? 'Liked' : 'Like'} · {post.likes.length}
-                    </button>
 
                     {/* Replies */}
                     {post.replies.length > 0 && (
@@ -405,11 +432,12 @@ export default function CommunityPage() {
 
                     {/* Reply input */}
                     <div className="flex gap-2">
-                      <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-[9px] font-bold text-primary shrink-0">
+                      <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-[9px] font-bold text-primary shrink-0 mt-1">
                         {authorInitials}
                       </div>
                       <div className="flex-1 flex gap-2">
                         <Input
+                          ref={el => { replyInputRefs.current[post.id] = el }}
                           placeholder="Write a reply…"
                           value={replyBoxes[post.id] ?? ''}
                           onChange={e => setReplyBoxes(prev => ({ ...prev, [post.id]: e.target.value }))}

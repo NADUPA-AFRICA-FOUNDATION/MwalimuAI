@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { LogOut, Menu, GraduationCap, Sun, Moon, Monitor } from 'lucide-react'
+import { LogOut, Menu, GraduationCap, Sun, Moon, Monitor, Languages } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { NotificationCenter } from '@/components/notification-center'
 import { useTheme } from 'next-themes'
@@ -79,7 +79,7 @@ export function DashboardHeader({ onLogout, onMenuToggle }: DashboardHeaderProps
             title={t('header.langToggle')}
             aria-label={t('header.langToggle')}
           >
-            <span className="text-base leading-none" aria-hidden="true">{lang === 'en' ? '🇰🇪' : '🇬🇧'}</span>
+            <Languages className="w-3.5 h-3.5" aria-hidden="true" />
             {t('header.langToggle')}
           </button>
 

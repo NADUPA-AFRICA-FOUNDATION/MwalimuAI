@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useProfile, type TeacherProfile } from '@/context/profile-context'
-import { GraduationCap, ArrowRight, ArrowLeft, CheckCircle2, Sparkles, BookMarked } from 'lucide-react'
+import { GraduationCap, ArrowRight, ArrowLeft, CheckCircle2, Sparkles, BookMarked, Check } from 'lucide-react'
 import { getT } from '@/lib/i18n'
 
 const SUBJECTS = [
@@ -130,7 +130,7 @@ function MultiSelect({ options, selected, onChange }: {
               : 'bg-transparent border-border/50 text-muted-foreground hover:border-border hover:text-foreground hover:bg-muted/40'
           }`}
         >
-          {selected.includes(o) && <span className="mr-1 text-primary text-xs">✓</span>}
+          {selected.includes(o) && <Check className="w-3.5 h-3.5 text-primary mr-1 shrink-0" />}
           {o}
         </button>
       ))}

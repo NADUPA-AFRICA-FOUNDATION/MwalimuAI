@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { BackButton } from '@/components/back-button'
+import { MarketingHeader } from '@/components/marketing-header'
+import { MarketingFooter } from '@/components/marketing-footer'
 import Link from 'next/link'
 import { Target, Heart, Users, Award } from 'lucide-react'
 
@@ -52,32 +53,11 @@ const values = [
 
 export default function AboutPage() {
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-background sticky top-0 z-40">
-        <div className="max-w-6xl mx-auto px-4 md:px-8 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <BackButton fallbackHref="/" />
-            <Link href="/" className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <span className="text-primary-foreground font-bold">M</span>
-              </div>
-              <span className="font-semibold text-lg">Mwalimu AI</span>
-            </Link>
-          </div>
-          <div className="flex items-center gap-4">
-            <Link href="/auth/login">
-              <Button variant="ghost">Log In</Button>
-            </Link>
-            <Link href="/auth/sign-up">
-              <Button>Sign Up</Button>
-            </Link>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen">
+      <MarketingHeader activePath="/about" />
 
       {/* Hero */}
-      <section className="max-w-6xl mx-auto px-4 md:px-8 py-16 text-center">
+      <section className="max-w-7xl mx-auto px-4 md:px-8 py-16 text-center">
         <h1 className="text-4xl md:text-5xl font-bold mb-6">About Mwalimu AI</h1>
         <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
           We are on a mission to empower every Kenyan teacher with the skills and confidence to deliver
@@ -86,7 +66,7 @@ export default function AboutPage() {
       </section>
 
       {/* Mission */}
-      <section className="max-w-6xl mx-auto px-4 md:px-8 pb-16">
+      <section className="max-w-7xl mx-auto px-4 md:px-8 pb-16">
         <div className="grid md:grid-cols-2 gap-12 items-center">
           <div>
             <h2 className="text-3xl font-bold mb-6">Our Mission</h2>
@@ -119,7 +99,7 @@ export default function AboutPage() {
       </section>
 
       {/* Values */}
-      <section className="max-w-6xl mx-auto px-4 md:px-8 pb-16">
+      <section className="max-w-7xl mx-auto px-4 md:px-8 pb-16">
         <h2 className="text-3xl font-bold mb-8 text-center">Our Values</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {values.map((value) => (
@@ -135,7 +115,7 @@ export default function AboutPage() {
       </section>
 
       {/* Team */}
-      <section className="max-w-6xl mx-auto px-4 md:px-8 pb-16">
+      <section className="max-w-7xl mx-auto px-4 md:px-8 pb-16">
         <h2 className="text-3xl font-bold mb-8 text-center">Our Team</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {team.map((member) => (
@@ -154,7 +134,7 @@ export default function AboutPage() {
       </section>
 
       {/* CTA */}
-      <section className="max-w-6xl mx-auto px-4 md:px-8 pb-20">
+      <section className="max-w-7xl mx-auto px-4 md:px-8 pb-20">
         <Card className="p-12 text-center bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
           <h2 className="text-3xl font-bold mb-4">Join Our Mission</h2>
           <p className="text-muted-foreground mb-8 text-lg max-w-2xl mx-auto">
@@ -174,12 +154,7 @@ export default function AboutPage() {
         </Card>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t bg-muted py-8">
-        <div className="max-w-6xl mx-auto px-4 md:px-8 text-center text-sm text-muted-foreground">
-          <p>&copy; 2026 Mwalimu AI. All rights reserved.</p>
-        </div>
-      </footer>
+      <MarketingFooter />
     </div>
   )
 }

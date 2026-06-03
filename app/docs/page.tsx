@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { BackButton } from '@/components/back-button'
+import { MarketingHeader } from '@/components/marketing-header'
+import { MarketingFooter } from '@/components/marketing-footer'
 import Link from 'next/link'
 import { BookOpen, Zap, Users, Settings, HelpCircle, FileText } from 'lucide-react'
 
@@ -75,32 +76,11 @@ const docSections = [
 
 export default function DocsPage() {
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-background sticky top-0 z-40">
-        <div className="max-w-6xl mx-auto px-4 md:px-8 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <BackButton fallbackHref="/" />
-            <Link href="/" className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <span className="text-primary-foreground font-bold">M</span>
-              </div>
-              <span className="font-semibold text-lg">Mwalimu AI</span>
-            </Link>
-          </div>
-          <div className="flex items-center gap-4">
-            <Link href="/auth/login">
-              <Button variant="ghost">Log In</Button>
-            </Link>
-            <Link href="/auth/sign-up">
-              <Button>Sign Up</Button>
-            </Link>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen">
+      <MarketingHeader />
 
       {/* Hero */}
-      <section className="max-w-6xl mx-auto px-4 md:px-8 py-16 text-center">
+      <section className="max-w-7xl mx-auto px-4 md:px-8 py-16 text-center">
         <h1 className="text-4xl md:text-5xl font-bold mb-6">Documentation</h1>
         <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
           Everything you need to know about using Mwalimu AI effectively. Find guides, tutorials, and
@@ -120,7 +100,7 @@ export default function DocsPage() {
       </section>
 
       {/* Doc Sections */}
-      <section className="max-w-6xl mx-auto px-4 md:px-8 pb-20">
+      <section className="max-w-7xl mx-auto px-4 md:px-8 pb-20">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {docSections.map((section) => (
             <Card key={section.title} className="p-6">
@@ -147,7 +127,7 @@ export default function DocsPage() {
       </section>
 
       {/* Quick Links */}
-      <section className="max-w-6xl mx-auto px-4 md:px-8 pb-20">
+      <section className="max-w-7xl mx-auto px-4 md:px-8 pb-20">
         <Card className="p-8">
           <h2 className="text-2xl font-bold mb-6 text-center">Popular Resources</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -184,12 +164,7 @@ export default function DocsPage() {
         </Card>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t bg-muted py-8">
-        <div className="max-w-6xl mx-auto px-4 md:px-8 text-center text-sm text-muted-foreground">
-          <p>&copy; 2026 Mwalimu AI. All rights reserved.</p>
-        </div>
-      </footer>
+      <MarketingFooter />
     </div>
   )
 }

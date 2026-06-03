@@ -6,6 +6,7 @@ import { Progress } from '@/components/ui/progress'
 import {
   BookOpen, MessageSquare, FileText, Trophy, Users, ArrowRight,
   Sparkles, TrendingUp, Clock, Star, ChevronRight, Flame, PenLine,
+  CheckCircle2, X, Check,
 } from 'lucide-react'
 import Link from 'next/link'
 import { getStreak, recordActivity, getBadgeInput, computeBadges } from '@/lib/streak'
@@ -16,6 +17,7 @@ export default function DashboardPage() {
   const [streak, setStreak] = useState({ current: 0, longest: 0, totalDays: 0, weekDays: Array(7).fill(false) as boolean[] })
   const [badgesEarned, setBadgesEarned] = useState(0)
   const [completedLessons, setCompletedLessons] = useState(0)
+  const [showPaymentSuccess, setShowPaymentSuccess] = useState(false)
 
   useEffect(() => {
     recordActivity('login')
@@ -24,12 +26,25 @@ export default function DashboardPage() {
     const input = getBadgeInput()
     setBadgesEarned(computeBadges(input).filter(b => b.earned).length)
     setCompletedLessons(input.completedLessons)
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('payment') === 'success') setShowPaymentSuccess(true)
   }, [])
 
   const teacherName = profile?.name && profile.name !== 'Teacher' ? profile.name : 'Teacher'
 
   return (
     <div className="space-y-7">
+
+      {/* Payment success banner */}
+      {showPaymentSuccess && (
+        <div className="flex items-center gap-3 p-4 rounded-xl bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 text-green-800 dark:text-green-300">
+          <CheckCircle2 className="w-5 h-5 shrink-0" />
+          <p className="text-sm font-medium flex-1">Payment successful! Your plan has been upgraded. Welcome to the Professional tier.</p>
+          <button onClick={() => setShowPaymentSuccess(false)} className="shrink-0 p-1 rounded hover:bg-green-100 dark:hover:bg-green-900/40">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* ── Welcome Banner ───────────────────────────────── */}
       <div className="relative overflow-hidden bg-primary rounded-2xl p-7 md:p-10">
@@ -43,8 +58,11 @@ export default function DashboardPage() {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
             <div>
               <div className="inline-flex items-center gap-2 bg-white/20 text-white px-3 py-1.5 rounded-full text-xs font-semibold mb-4">
-                <Sparkles className="w-3.5 h-3.5 animate-spin-slow" />
-                {streak.current >= 3 ? `🔥 ${streak.current}-day streak!` : 'Welcome back!'}
+                {streak.current >= 3 ? (
+                  <><Flame className="w-3.5 h-3.5" />{streak.current}-day streak</>
+                ) : (
+                  <><Sparkles className="w-3.5 h-3.5 animate-spin-slow" />Welcome back</>
+                )}
               </div>
               <h1 className="text-2xl md:text-3xl font-bold text-primary-foreground mb-2 tracking-tight">
                 Ready to continue learning, {teacherName}?
@@ -77,7 +95,7 @@ export default function DashboardPage() {
         <div className="glass rounded-2xl p-5 hover:shadow-lg hover:shadow-primary/8 hover:-translate-y-0.5 transition-all duration-200">
           <div className="flex items-start justify-between mb-4">
             <div>
-              <p className="text-xs text-muted-foreground mb-1 font-medium">Lessons Completed</p>
+              <p className="text-xs text-muted-foreground mb-1 font-medium">Lessons completed</p>
               <p className="text-3xl font-bold gradient-text tabular-nums">{completedLessons}</p>
               <p className="text-xs text-muted-foreground mt-1">{completedLessons === 0 ? 'Start your first lesson' : 'lessons done'}</p>
             </div>
@@ -91,8 +109,8 @@ export default function DashboardPage() {
         <div className="glass rounded-2xl p-5 hover:shadow-lg hover:shadow-accent/8 hover:-translate-y-0.5 transition-all duration-200">
           <div className="flex items-start justify-between mb-4">
             <div>
-              <p className="text-xs text-muted-foreground mb-1 font-medium">AI Chat Sessions</p>
-              <p className="text-3xl font-bold text-accent tabular-nums">12</p>
+              <p className="text-xs text-muted-foreground mb-1 font-medium">AI chat sessions</p>
+              <p className="text-3xl font-bold text-accent tabular-nums">11</p>
               <p className="text-xs text-muted-foreground mt-1">this week</p>
             </div>
             <div className="w-11 h-11 bg-gradient-to-br from-accent/20 to-accent/5 rounded-xl flex items-center justify-center shrink-0">
@@ -101,15 +119,15 @@ export default function DashboardPage() {
           </div>
           <div className="flex items-center gap-1.5 text-xs text-primary font-medium">
             <TrendingUp className="w-3.5 h-3.5" />
-            +25% from last week
+            +18% from last week
           </div>
         </div>
 
         <div className="glass rounded-2xl p-5 hover:shadow-lg hover:shadow-primary/8 hover:-translate-y-0.5 transition-all duration-200">
           <div className="flex items-start justify-between mb-4">
             <div>
-              <p className="text-xs text-muted-foreground mb-1 font-medium">Community Posts</p>
-              <p className="text-3xl font-bold gradient-text tabular-nums">5</p>
+              <p className="text-xs text-muted-foreground mb-1 font-medium">Community posts</p>
+              <p className="text-3xl font-bold gradient-text tabular-nums">3</p>
               <p className="text-xs text-muted-foreground mt-1">contributions</p>
             </div>
             <div className="w-11 h-11 bg-gradient-to-br from-primary/20 to-primary/5 rounded-xl flex items-center justify-center shrink-0">
@@ -125,7 +143,7 @@ export default function DashboardPage() {
         <div className="glass rounded-2xl p-5 hover:shadow-lg hover:shadow-accent/8 hover:-translate-y-0.5 transition-all duration-200">
           <div className="flex items-start justify-between mb-4">
             <div>
-              <p className="text-xs text-muted-foreground mb-1 font-medium">Badges Earned</p>
+              <p className="text-xs text-muted-foreground mb-1 font-medium">Badges earned</p>
               <p className="text-3xl font-bold text-accent tabular-nums">{badgesEarned}</p>
               <p className="text-xs text-muted-foreground mt-1">{badgesEarned === 0 ? 'None yet' : 'achievements'}</p>
             </div>
@@ -244,18 +262,23 @@ export default function DashboardPage() {
           </Link>
         </div>
 
-        {/* Last 7 days — today first (index 0) */}
+        {/* Last 7 days — oldest left, today right */}
         <div className="flex gap-1.5">
-          {['Today','6d','5d','4d','3d','2d','1d'].map((label, i) => {
-            const active = streak.weekDays[i]
+          {['6d','5d','4d','3d','2d','1d','Today'].map((label, i) => {
+            const dataIdx = 6 - i   // weekDays[0]=today, [6]=6d ago
+            const active  = streak.weekDays[dataIdx]
+            const isToday = i === 6
             return (
               <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
-                <div className={`w-full aspect-square rounded-lg flex items-center justify-center text-[10px] font-bold transition-all ${
+                <div className={`w-full aspect-square rounded-lg flex items-center justify-center transition-all ${
                   active
                     ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/20'
-                    : i === 0 ? 'bg-muted/80 border-2 border-dashed border-primary/30 text-muted-foreground' : 'bg-muted text-muted-foreground/50'
+                    : isToday ? 'bg-muted/80 border-2 border-dashed border-primary/30 text-muted-foreground/40' : 'bg-muted/60 text-muted-foreground/20'
                 }`}>
-                  {active ? '✓' : i === 0 ? '·' : '·'}
+                  {active
+                    ? <Check className="w-2.5 h-2.5" />
+                    : <span className="w-1.5 h-1.5 rounded-full bg-current inline-block opacity-60" />
+                  }
                 </div>
                 <span className="text-[9px] text-muted-foreground truncate w-full text-center">{label}</span>
               </div>

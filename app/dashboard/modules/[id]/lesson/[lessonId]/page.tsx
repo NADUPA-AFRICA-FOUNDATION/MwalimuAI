@@ -213,8 +213,8 @@ export default function LessonPage() {
       // Bold text patterns
       let processedLine = trimmedLine
         .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-        .replace(/❌/g, '<span class="text-red-500">❌</span>')
-        .replace(/✅/g, '<span class="text-green-500">✅</span>')
+        .replace(/❌/g, '<span class="inline-flex items-center justify-center w-4 h-4 rounded-full bg-destructive/15 text-destructive text-[10px] font-bold">✕</span>')
+        .replace(/✅/g, '<span class="inline-flex items-center justify-center w-4 h-4 rounded-full bg-green-500/15 text-green-600 text-[10px] font-bold">✓</span>')
 
       // Paragraph
       flushList()

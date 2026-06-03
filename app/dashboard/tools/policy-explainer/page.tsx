@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import { authedFetch } from '@/lib/authed-fetch'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
@@ -23,6 +24,7 @@ export default function PolicyExplainerPage() {
   const [policyText, setPolicyText] = useState('')
   const [output, setOutput]         = useState('')
   const [isLoading, setIsLoading]   = useState(false)
+  const [isPrinting, setIsPrinting] = useState(false)
   const [error, setError]           = useState<string | null>(null)
   const [copied, setCopied]         = useState(false)
   const outputRef = useRef<HTMLDivElement>(null)
@@ -36,7 +38,7 @@ export default function PolicyExplainerPage() {
     setError(null)
 
     try {
-      const res = await fetch('/api/tools', {
+      const res = await authedFetch('/api/tools', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tool: 'policy-explainer', prompt: policyText, lang }),
@@ -66,12 +68,11 @@ export default function PolicyExplainerPage() {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const printOutput = () => printPDF({
-    title:   'Policy Explained',
-    meta:    `${wordCount} words analysed`,
-    content: output,
-    type:    'policy',
-  })
+  const printOutput = async () => {
+    setIsPrinting(true)
+    try { await printPDF({ title: 'Policy Explained', meta: `${wordCount} words analysed`, content: output, type: 'policy' }) }
+    finally { setIsPrinting(false) }
+  }
 
   return (
     <div className="max-w-5xl mx-auto">
@@ -138,8 +139,8 @@ export default function PolicyExplainerPage() {
             <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Plain Language Explanation</h2>
             {output && (
               <div className="flex gap-1.5">
-                <Button variant="ghost" size="sm" onClick={printOutput} className="rounded-xl gap-1.5 text-xs">
-                  <Printer className="w-3.5 h-3.5" /> Print
+                <Button variant="ghost" size="sm" onClick={printOutput} disabled={isPrinting} className="rounded-xl gap-1.5 text-xs">
+                  {isPrinting ? 'Generating…' : <><Printer className="w-3.5 h-3.5" /> Download PDF</>}
                 </Button>
                 <Button variant="ghost" size="sm" onClick={copyOutput} className="rounded-xl gap-1.5 text-xs">
                   {copied ? <><Check className="w-3.5 h-3.5 text-green-500" /> Copied!</> : <><Copy className="w-3.5 h-3.5" /> Copy</>}

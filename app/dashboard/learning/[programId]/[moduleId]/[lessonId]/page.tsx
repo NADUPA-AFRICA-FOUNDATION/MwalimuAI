@@ -18,7 +18,7 @@ import { Textarea } from '@/components/ui/textarea'
 import {
   CheckCircle2, ChevronLeft, ChevronRight, Play, BookOpen,
   PenLine, MessageCircle, Send, Clock, Lightbulb, Video, Sparkles,
-  Volume2, VolumeX, Share2,
+  Volume2, VolumeX, Share2, Check,
 } from 'lucide-react'
 
 const LESSON_CONTEXT_KEY = 'mwalimu_current_lesson'
@@ -316,7 +316,10 @@ export default function LessonPage() {
             />
             <div className="flex items-center justify-between mt-2">
               <p className="text-xs text-muted-foreground">
-                {reflectionSaved ? '✓ Saved automatically' : reflection ? 'Saving...' : 'Your reflection is saved automatically'}
+                {reflectionSaved
+                  ? <span className="inline-flex items-center gap-1"><Check className="w-3 h-3" /> Saved automatically</span>
+                  : reflection ? 'Saving...' : 'Your reflection is saved automatically'
+                }
               </p>
               <p className="text-xs text-muted-foreground">{reflection.split(/\s+/).filter(Boolean).length} words</p>
             </div>

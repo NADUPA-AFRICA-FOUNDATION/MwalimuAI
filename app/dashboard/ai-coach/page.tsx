@@ -6,9 +6,10 @@ import { DefaultChatTransport } from 'ai'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { BackButton } from '@/components/back-button'
-import { Send, Lightbulb, AlertCircle, RefreshCw, Wifi, WifiOff, Cpu, BookMarked, X } from 'lucide-react'
+import { Send, Lightbulb, AlertCircle, RefreshCw, Wifi, WifiOff, Cpu, BookMarked, X, Globe } from 'lucide-react'
 import { MarkdownRenderer } from '@/components/markdown-renderer'
 import { useProfile } from '@/context/profile-context'
+import { authHeaders } from '@/lib/authed-fetch'
 import Link from 'next/link'
 
 const LESSON_CONTEXT_KEY = 'mwalimu_current_lesson'
@@ -69,7 +70,7 @@ export default function AICoachPage() {
   }, [])
 
   const { messages, status, error, sendMessage } = useChat({
-    id: `chat-${lang}`,
+    id: 'mwalimu-coach',
     transport: new DefaultChatTransport({
       api: '/api/chat',
       body: {
@@ -85,7 +86,10 @@ export default function AICoachPage() {
         } : null,
       },
       fetch: async (url, init) => {
-        const res = await fetch(url, init as RequestInit)
+        const extra = await authHeaders()
+        const headers = new Headers(init?.headers as HeadersInit)
+        Object.entries(extra).forEach(([k, v]) => headers.set(k, v))
+        const res = await fetch(url, { ...(init as RequestInit), headers })
         const b = res.headers.get('X-AI-Backend') as Backend
         if (b) setBackend(b)
         return res
@@ -122,7 +126,7 @@ export default function AICoachPage() {
   })()
 
   return (
-    <div className="flex flex-col bg-background" style={{ height: 'calc(100vh - 57px)' }}>
+    <div className="flex flex-col" style={{ height: 'calc(100vh - 57px)' }}>
 
       {/* Back nav + status bar */}
       <div className="px-4 md:px-8 pt-4 pb-2 shrink-0 flex items-center justify-between">
@@ -152,6 +156,14 @@ export default function AICoachPage() {
           )}
         </div>
       </div>
+
+      {/* Kiswahili accuracy notice */}
+      {lang === 'sw' && (
+        <div className="mx-4 md:mx-8 mb-1 flex items-center gap-2 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 px-3 py-2 rounded-xl text-xs shrink-0">
+          <Globe className="w-3.5 h-3.5 shrink-0" />
+          <span>Majibu ya AI yanaweza kuwa na makosa ya Kiswahili. Thibitisha istilahi muhimu.</span>
+        </div>
+      )}
 
       {/* Error banner */}
       {errorMessage && (

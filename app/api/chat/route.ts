@@ -1,5 +1,6 @@
 import { streamText, convertToModelMessages } from 'ai'
 import { createOpenAI } from '@ai-sdk/openai'
+import { requireAuth } from '@/lib/require-auth'
 
 const groq = createOpenAI({
   baseURL: 'https://api.groq.com/openai/v1',
@@ -21,7 +22,15 @@ function buildSystemPrompt(lang?: string, profile?: {
   programTitle?: string; moduleTitle?: string; lessonTitle?: string
 } | null): string {
   const langInstruction = lang === 'sw'
-    ? 'IMPORTANT: Always respond in Kiswahili (Swahili). Use clear, accessible Kiswahili that Kenyan teachers will understand.\n\n'
+    ? `LUGHA YA JIBU: Lazima ujibu KWA KISWAHILI SANIFU pekee — hii ni amri ya lazima, isibadilishwe.
+Kanuni za lugha:
+- Tumia Kiswahili sanifu kinachotumiwa katika shule za Kenya.
+- Maneno ya kiufundi ya elimu: "competency" → "uwezo/ujuzi", "assessment" → "tathmini", "curriculum" → "mtaala", "lesson plan" → "mpango wa somo", "strand" → "eneo la kujifunza", "CBC" → "CBC (Mtaala Unaozingatia Uwezo)".
+- Maneno ambayo hayana tafsiri nzuri ya Kiswahili (majina ya zana, vifupi rasmi kama CBC/KICD/TSC) — yatumie kwa Kiingereza ukiyaweka katika mabano: mfano "tathmini (assessment)".
+- Vichwa vyote, orodha, maelezo, na maswali lazima viandikwe kwa Kiswahili.
+- Mwisho wa jibu lako, hakikisha umeandika kwa Kiswahili — usirudi Kiingereza.
+
+`
     : ''
 
   const profileContext = profile?.name ? `
@@ -86,6 +95,9 @@ async function isOllamaAvailable(): Promise<boolean> {
 }
 
 export async function POST(req: Request) {
+  const authError = await requireAuth(req)
+  if (authError) return authError
+
   const { messages, lang, profile, currentLesson } = await req.json()
   const converted = await convertToModelMessages(messages)
   const system = buildSystemPrompt(lang, profile, currentLesson)

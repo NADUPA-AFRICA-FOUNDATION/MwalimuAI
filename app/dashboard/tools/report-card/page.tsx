@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { authedFetch } from '@/lib/authed-fetch'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -66,7 +67,7 @@ export default function ReportCardPage() {
     setError(null)
 
     try {
-      const res = await fetch('/api/tools', {
+      const res = await authedFetch('/api/tools', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tool: 'report-card', prompt: buildPrompt(form) }),

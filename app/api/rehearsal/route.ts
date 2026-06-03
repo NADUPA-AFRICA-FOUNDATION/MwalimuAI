@@ -1,5 +1,6 @@
-import { streamText } from 'ai'
+import { streamText, convertToModelMessages } from 'ai'
 import { createOpenAI } from '@ai-sdk/openai'
+import { requireAuth } from '@/lib/require-auth'
 
 const groq = createOpenAI({
   baseURL: 'https://api.groq.com/openai/v1',
@@ -9,7 +10,7 @@ const ollama = createOpenAI({
   baseURL: 'http://localhost:11434/v1',
   apiKey: 'ollama',
 })
-const GROQ_MODEL = process.env.GROQ_MODEL ?? 'llama-3.1-8b-instant'
+const GROQ_MODEL   = process.env.GROQ_MODEL   ?? 'llama-3.1-8b-instant'
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL ?? 'gemma2:2b'
 
 let groqFailedAt = 0
@@ -23,13 +24,17 @@ async function isOllamaAvailable(): Promise<boolean> {
     if (!res.ok) return false
     const { models } = (await res.json()) as { models: Array<{ name: string }> }
     const base = OLLAMA_MODEL.split(':')[0]
-    return Array.isArray(models) && models.some(m => m.name === OLLAMA_MODEL || m.name.startsWith(base + ':') || m.name === base)
+    return Array.isArray(models) && models.some(m =>
+      m.name === OLLAMA_MODEL || m.name.startsWith(base + ':') || m.name === base,
+    )
   } catch { return false }
 }
 
 function buildSystem(lessonPlan: string, grade: string, lang?: string) {
   const langInstruction = lang === 'sw'
-    ? 'IMPORTANT: Simulate the class responses in Kiswahili. The teacher may also respond in Kiswahili.\n\n'
+    ? `LUGHA: Jibu KWA KISWAHILI pekee — majibu yote ya darasa, maswali ya wanafunzi, na maoni lazima yaandikwe kwa Kiswahili. Mwalimu ataweza kujibu pia kwa Kiswahili. Tumia lugha ya kawaida ya watoto wa shule za Kenya — mchanganyiko wa Kiswahili sanifu na misemo ya kila siku darasani. Usirudi Kiingereza isipokuwa kwa majina ya vitu halisi (jina la darasa, nambari, n.k.).
+
+`
     : ''
 
   return `${langInstruction}You are simulating a lively class of ${grade} learners in a Kenyan CBC classroom.
@@ -52,14 +57,19 @@ Start: When the teacher sends their first message (usually introducing the topic
 }
 
 export async function POST(req: Request) {
+  const authError = await requireAuth(req)
+  if (authError) return authError
+
   const { messages, lessonPlan, grade, lang } = await req.json() as {
-    messages: Array<{ role: 'user' | 'assistant'; content: string }>
+    messages: unknown[]
     lessonPlan: string
-    grade: string
-    lang?: string
+    grade:      string
+    lang?:      string
   }
 
-  const system = buildSystem(lessonPlan ?? '', grade ?? 'Grade 4', lang)
+  // Convert from UIMessage format (sent by useChat) to ModelMessage format for streamText
+  const converted = await convertToModelMessages(messages as Parameters<typeof convertToModelMessages>[0])
+  const system    = buildSystem(lessonPlan ?? '', grade ?? 'Grade 4', lang)
 
   const canUseGroq = process.env.GROQ_API_KEY && !groqOnCooldown()
 
@@ -67,34 +77,39 @@ export async function POST(req: Request) {
     const result = streamText({
       model: groq(GROQ_MODEL),
       system,
-      messages,
+      messages: converted,
       temperature: 0.85,
       maxOutputTokens: 400,
       maxRetries: 0,
       onError({ error }: { error: unknown }) {
         const msg = String(error)
-        if (msg.includes('429') || msg.includes('rate_limit') || msg.includes('TooManyRequests')) markGroqFailed()
+        if (msg.includes('429') || msg.includes('rate_limit') || msg.includes('TooManyRequests')) {
+          markGroqFailed()
+        }
       },
     })
-    const response = result.toTextStreamResponse()
+    const response = result.toUIMessageStreamResponse()
     response.headers.set('X-AI-Backend', 'groq')
     return response
   }
 
   const ollamaUp = await isOllamaAvailable()
   if (!ollamaUp) {
-    return Response.json({ error: 'No AI backend available. Add GROQ_API_KEY to .env.local.' }, { status: 503 })
+    return Response.json(
+      { error: 'No AI backend available. Add GROQ_API_KEY to .env.local.' },
+      { status: 503 },
+    )
   }
 
   const result = streamText({
     model: ollama(OLLAMA_MODEL),
     system,
-    messages,
+    messages: converted,
     temperature: 0.85,
     maxOutputTokens: 400,
     maxRetries: 0,
   })
-  const response = result.toTextStreamResponse()
+  const response = result.toUIMessageStreamResponse()
   response.headers.set('X-AI-Backend', 'ollama')
   return response
 }

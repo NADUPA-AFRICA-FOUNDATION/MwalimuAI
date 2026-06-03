@@ -5,9 +5,19 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { BackButton } from '@/components/back-button'
-import { BookOpen, Clock, BarChart3, ChevronRight } from 'lucide-react'
+import { BookOpen, Clock, BarChart3, ChevronRight, BookMarked, ClipboardCheck, Target, Users, Monitor, School, FileEdit, type LucideIcon } from 'lucide-react'
 import Link from 'next/link'
 import { modulesData } from '@/lib/modules-data'
+
+const MODULE_ICONS: Record<string, LucideIcon> = {
+  CBC: BookMarked,
+  CBA: ClipboardCheck,
+  FA:  Target,
+  INC: Users,
+  DIG: Monitor,
+  JSS: School,
+  LP:  FileEdit,
+}
 
 const categories = [
   { id: 'all', name: 'All Modules' },
@@ -67,8 +77,8 @@ export default function ModulesPage() {
             className="group"
           >
             <Card className="overflow-hidden hover:shadow-lg transition-all hover:border-primary/50 flex flex-col h-full">
-              <div className="bg-gradient-to-br from-primary/10 to-primary/5 p-6 flex items-center justify-center text-5xl">
-                {module.icon}
+              <div className="bg-gradient-to-br from-primary/10 to-primary/5 p-6 flex items-center justify-center">
+                {(() => { const Icon = MODULE_ICONS[module.icon] ?? BookOpen; return <Icon className="w-10 h-10 text-primary" aria-hidden="true" /> })()}
               </div>
 
               <div className="p-6 flex flex-col flex-1">

@@ -25,7 +25,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // Show a full-screen spinner while Firebase resolves auth (prevents login flash)
   if (authLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
+      <div className="flex min-h-screen items-center justify-center">
         <div className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin" aria-label="Loading…" />
       </div>
     )
@@ -39,7 +39,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       <DashboardHeader
         onLogout={handleLogout}
         onMenuToggle={() => setSidebarOpen(!sidebarOpen)}

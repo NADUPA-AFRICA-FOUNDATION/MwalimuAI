@@ -62,8 +62,13 @@ export default function Page() {
   }
 
   return (
-    <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
-      <div className="w-full max-w-sm">
+    <div className="relative flex min-h-svh w-full items-center justify-center overflow-hidden p-6 md:p-10">
+      <div className="absolute inset-0 -z-10">
+        <div className="absolute -top-24 -left-24 h-80 w-80 rounded-full bg-primary/15 blur-3xl" />
+        <div className="absolute top-1/3 -right-24 h-96 w-96 rounded-full bg-accent/15 blur-3xl" />
+        <div className="absolute -bottom-32 left-1/4 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
+      </div>
+      <div className="w-full max-w-md">
         <div className="flex flex-col gap-6">
           <BackButton fallbackHref="/" />
 

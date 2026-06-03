@@ -1,5 +1,6 @@
 import { streamText } from 'ai'
 import { createOpenAI } from '@ai-sdk/openai'
+import { requireAuth } from '@/lib/require-auth'
 
 const groq = createOpenAI({
   baseURL: 'https://api.groq.com/openai/v1',
@@ -215,10 +216,16 @@ async function isOllamaAvailable(): Promise<boolean> {
 }
 
 export async function POST(req: Request) {
+  const authError = await requireAuth(req)
+  if (authError) return authError
+
   const { tool, prompt, lang } = await req.json()
   const base = SYSTEM_PROMPTS[tool] ?? SYSTEM_PROMPTS['lesson-plan']
   const langInstruction = lang === 'sw'
-    ? 'IMPORTANT: Always respond in Kiswahili (Swahili). Use clear, accessible Kiswahili.\n\n'
+    ? `LUGHA YA MATOKEO: Andika jibu LOTE kwa Kiswahili sanifu — vichwa, orodha, maelezo, na mifano. Hii ni amri ya lazima.
+Kanuni: "assessment" → "tathmini", "lesson plan" → "mpango wa somo", "competency" → "uwezo", "curriculum" → "mtaala", "strand" → "eneo la kujifunza". Vifupi rasmi (CBC, KICD, TSC) vibaki kama vinavyoandikwa. Maneno bila tafsiri nzuri yawekwe mabano baada ya neno la Kiswahili: mfano "tathmini (assessment)". Usirudi Kiingereza katikati ya jibu.
+
+`
     : ''
   const system = langInstruction + base
 

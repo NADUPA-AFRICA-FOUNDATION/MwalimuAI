@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import { authedFetch } from '@/lib/authed-fetch'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
@@ -36,6 +37,7 @@ export default function ActionResearchPage() {
     Object.fromEntries(STEPS.map(s => [s.id, { input: '', output: '' }]))
   )
   const [isLoading, setIsLoading]     = useState(false)
+  const [isPrinting, setIsPrinting]   = useState(false)
   const [error, setError]             = useState<string | null>(null)
   const [copied, setCopied]           = useState<number | null>(null)
   const outputRef = useRef<HTMLDivElement>(null)
@@ -62,7 +64,7 @@ export default function ActionResearchPage() {
     setStepData(prev => ({ ...prev, [currentStep]: { ...prev[currentStep], output: '' } }))
 
     try {
-      const res = await fetch('/api/tools', {
+      const res = await authedFetch('/api/tools', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tool: 'action-research', prompt: buildPrompt(), lang }),
@@ -94,18 +96,16 @@ export default function ActionResearchPage() {
     setTimeout(() => setCopied(null), 2000)
   }
 
-  const printAll = () => {
+  const printAll = async () => {
     const completedSteps = STEPS.filter(s => stepData[s.id].output)
     if (completedSteps.length === 0) return
     const combined = completedSteps.map(s =>
       `## ${s.id}. ${s.title}\n\n**Your notes:** ${stepData[s.id].input}\n\n${stepData[s.id].output}`
     ).join('\n\n---\n\n')
-    printPDF({
-      title:   'Classroom Action Research Cycle',
-      meta:    `${completedSteps.length} of ${STEPS.length} steps completed`,
-      content: combined,
-      type:    'research',
-    })
+    setIsPrinting(true)
+    try {
+      await printPDF({ title: 'Classroom Action Research Cycle', meta: `${completedSteps.length} of ${STEPS.length} steps completed`, content: combined, type: 'research' })
+    } finally { setIsPrinting(false) }
   }
 
   const completedCount = STEPS.filter(s => stepData[s.id].output).length
@@ -125,8 +125,8 @@ export default function ActionResearchPage() {
             </div>
           </div>
           {completedCount > 0 && (
-            <Button variant="outline" size="sm" onClick={printAll} className="rounded-xl gap-1.5 text-xs shrink-0">
-              <Printer className="w-3.5 h-3.5" /> Print Full Cycle
+            <Button variant="outline" size="sm" onClick={printAll} disabled={isPrinting} className="rounded-xl gap-1.5 text-xs shrink-0">
+              {isPrinting ? 'Generating…' : <><Printer className="w-3.5 h-3.5" /> Download PDF</>}
             </Button>
           )}
         </div>

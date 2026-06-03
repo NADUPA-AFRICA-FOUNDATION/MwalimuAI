@@ -1,32 +1,11 @@
-import { Button } from '@/components/ui/button'
-import { BackButton } from '@/components/back-button'
+import { MarketingHeader } from '@/components/marketing-header'
+import { MarketingFooter } from '@/components/marketing-footer'
 import Link from 'next/link'
 
 export default function PrivacyPage() {
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-background sticky top-0 z-40">
-        <div className="max-w-6xl mx-auto px-4 md:px-8 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <BackButton fallbackHref="/" />
-            <Link href="/" className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <span className="text-primary-foreground font-bold">M</span>
-              </div>
-              <span className="font-semibold text-lg">Mwalimu AI</span>
-            </Link>
-          </div>
-          <div className="flex items-center gap-4">
-            <Link href="/auth/login">
-              <Button variant="ghost">Log In</Button>
-            </Link>
-            <Link href="/auth/sign-up">
-              <Button>Sign Up</Button>
-            </Link>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen">
+      <MarketingHeader />
 
       {/* Content */}
       <main className="max-w-4xl mx-auto px-4 md:px-8 py-16">
@@ -165,12 +144,7 @@ export default function PrivacyPage() {
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t bg-muted py-8">
-        <div className="max-w-6xl mx-auto px-4 md:px-8 text-center text-sm text-muted-foreground">
-          <p>&copy; 2026 Mwalimu AI. All rights reserved.</p>
-        </div>
-      </footer>
+      <MarketingFooter />
     </div>
   )
 }

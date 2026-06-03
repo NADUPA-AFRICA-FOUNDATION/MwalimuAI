@@ -43,7 +43,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
   const relatedPosts = allPosts.filter((p) => p.slug !== slug).slice(0, 3)
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       {/* Header */}
       <header className="border-b border-border/50 bg-background/80 backdrop-blur-md sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-4 md:px-8 py-4 flex items-center justify-between">

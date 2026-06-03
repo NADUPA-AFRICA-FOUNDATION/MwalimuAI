@@ -1,10 +1,11 @@
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { BackButton } from '@/components/back-button'
+import { MarketingHeader } from '@/components/marketing-header'
+import { MarketingFooter } from '@/components/marketing-footer'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Calendar, Clock, User, ArrowRight, GraduationCap } from 'lucide-react'
+import { Calendar, Clock, User, ArrowRight } from 'lucide-react'
 import { getAllBlogPosts } from '@/lib/blog-data'
 
 export default function BlogPage() {
@@ -13,32 +14,11 @@ export default function BlogPage() {
   const otherPosts = blogPosts.slice(1)
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border/50 bg-background/80 backdrop-blur-md sticky top-0 z-40">
-        <div className="max-w-6xl mx-auto px-4 md:px-8 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <BackButton fallbackHref="/" />
-            <Link href="/" className="flex items-center gap-2">
-              <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-md shadow-primary/25">
-                <GraduationCap className="w-5 h-5 text-primary-foreground" />
-              </div>
-              <span className="font-bold text-lg">Mwalimu AI</span>
-            </Link>
-          </div>
-          <div className="flex items-center gap-3">
-            <Link href="/auth/login">
-              <Button variant="ghost" className="rounded-full">Log In</Button>
-            </Link>
-            <Link href="/auth/sign-up">
-              <Button className="rounded-full shadow-md shadow-primary/25">Sign Up</Button>
-            </Link>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen">
+      <MarketingHeader activePath="/blog" />
 
       {/* Hero */}
-      <section className="max-w-6xl mx-auto px-4 md:px-8 py-16 text-center">
+      <section className="max-w-7xl mx-auto px-4 md:px-8 py-16 text-center">
         <Badge className="mb-4 bg-primary/10 text-primary border-primary/20 px-4 py-1">
           Teacher Resources
         </Badge>
@@ -49,7 +29,7 @@ export default function BlogPage() {
       </section>
 
       {/* Featured Post */}
-      <section className="max-w-6xl mx-auto px-4 md:px-8 pb-12">
+      <section className="max-w-7xl mx-auto px-4 md:px-8 pb-12">
         <Link href={`/blog/${featuredPost.slug}`} className="group block">
           <Card className="overflow-hidden border-border/50 hover:border-primary/30 transition-all hover:shadow-xl">
             <div className="grid md:grid-cols-2 gap-0">
@@ -93,7 +73,7 @@ export default function BlogPage() {
       </section>
 
       {/* Blog Posts Grid */}
-      <section className="max-w-6xl mx-auto px-4 md:px-8 pb-20">
+      <section className="max-w-7xl mx-auto px-4 md:px-8 pb-20">
         <h2 className="text-2xl font-bold mb-8">Latest Articles</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {otherPosts.map((post) => (
@@ -138,7 +118,7 @@ export default function BlogPage() {
       </section>
 
       {/* Newsletter */}
-      <section className="max-w-6xl mx-auto px-4 md:px-8 pb-20">
+      <section className="max-w-7xl mx-auto px-4 md:px-8 pb-20">
         <Card className="p-8 md:p-12 text-center bg-gradient-to-br from-primary/10 via-primary/5 to-accent/10 border-primary/20">
           <h2 className="text-2xl md:text-3xl font-bold mb-4">Subscribe to Our Newsletter</h2>
           <p className="text-muted-foreground mb-8 max-w-2xl mx-auto">
@@ -150,17 +130,12 @@ export default function BlogPage() {
               placeholder="Enter your email"
               className="flex-1 min-w-[200px] px-4 py-3 rounded-full border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
             />
-            <Button className="rounded-full px-6 shadow-md shadow-primary/25">Subscribe</Button>
+            <Button className="rounded-xl px-6 shadow-md shadow-primary/25">Subscribe</Button>
           </div>
         </Card>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-border/50 bg-muted/30 py-8">
-        <div className="max-w-6xl mx-auto px-4 md:px-8 text-center text-sm text-muted-foreground">
-          <p>&copy; 2026 Mwalimu AI. All rights reserved.</p>
-        </div>
-      </footer>
+      <MarketingFooter />
     </div>
   )
 }

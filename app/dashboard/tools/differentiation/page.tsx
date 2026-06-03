@@ -1,12 +1,13 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { authedFetch } from '@/lib/authed-fetch'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { BackButton } from '@/components/back-button'
-import { Users, Wand2, Copy, Check, AlertCircle, RefreshCw } from 'lucide-react'
+import { Users, Wand2, Copy, Check, AlertCircle, RefreshCw, Circle } from 'lucide-react'
 import { MarkdownRenderer } from '@/components/markdown-renderer'
 
 const GRADES = ['PP1', 'PP2', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9']
@@ -79,7 +80,7 @@ export default function DifferentiationPage() {
     const selectedLabels = BARRIERS.filter(b => form.barriers.includes(b.id)).map(b => b.label)
 
     try {
-      const res = await fetch('/api/tools', {
+      const res = await authedFetch('/api/tools', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -191,8 +192,10 @@ export default function DifferentiationPage() {
                       : 'border-border/50 bg-transparent text-muted-foreground hover:border-border hover:text-foreground hover:bg-muted/40'
                   }`}
                 >
-                  <span className={`mr-2 text-xs ${form.barriers.includes(b.id) ? 'text-primary' : 'text-muted-foreground/40'}`}>
-                    {form.barriers.includes(b.id) ? '✓' : '○'}
+                  <span className={`mr-2 inline-flex items-center ${form.barriers.includes(b.id) ? 'text-primary' : 'text-muted-foreground/30'}`}>
+                    {form.barriers.includes(b.id)
+                      ? <Check className="w-3.5 h-3.5" />
+                      : <Circle className="w-3.5 h-3.5" />}
                   </span>
                   {b.label}
                 </button>

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { authedFetch } from '@/lib/authed-fetch'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -43,17 +44,25 @@ export default function LessonPlanPage() {
   })
   const [output, setOutput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [isPrinting, setIsPrinting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const outputRef = useRef<HTMLDivElement>(null)
 
-  const printOutput = () => printPDF({
-    title:    `Lesson Plan: ${form.subject} · ${form.grade}`,
-    subtitle: form.strand ? `${form.strand} — ${form.subStrand}` : undefined,
-    meta:     `${form.duration} · ${form.level}`,
-    content:  output,
-    type:     'lesson-plan',
-  })
+  const printOutput = async () => {
+    setIsPrinting(true)
+    try {
+      await printPDF({
+        title:    `Lesson Plan: ${form.subject} · ${form.grade}`,
+        subtitle: form.strand ? `${form.strand} — ${form.subStrand}` : undefined,
+        meta:     `${form.duration} · ${form.level}`,
+        content:  output,
+        type:     'lesson-plan',
+      })
+    } finally {
+      setIsPrinting(false)
+    }
+  }
 
   useEffect(() => {
     if (isLoading && outputRef.current) {
@@ -71,7 +80,7 @@ export default function LessonPlanPage() {
     setError(null)
 
     try {
-      const res = await fetch('/api/tools', {
+      const res = await authedFetch('/api/tools', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tool: 'lesson-plan', prompt: buildPrompt(form) }),
@@ -241,8 +250,10 @@ export default function LessonPlanPage() {
             <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Generated Lesson Plan</h2>
             {output && (
               <div className="flex gap-1.5">
-                <Button variant="ghost" size="sm" onClick={printOutput} className="rounded-xl gap-1.5 text-xs">
-                  <Printer className="w-3.5 h-3.5" aria-hidden="true" /> Print / PDF
+                <Button variant="ghost" size="sm" onClick={printOutput} disabled={isPrinting} className="rounded-xl gap-1.5 text-xs">
+                  {isPrinting
+                    ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" aria-hidden="true" /> Generating…</>
+                    : <><Printer className="w-3.5 h-3.5" aria-hidden="true" /> Download PDF</>}
                 </Button>
                 <Button variant="ghost" size="sm" onClick={copyOutput} className="rounded-xl gap-1.5 text-xs">
                   {copied ? <><Check className="w-3.5 h-3.5 text-green-500" aria-hidden="true" /> Copied!</> : <><Copy className="w-3.5 h-3.5" aria-hidden="true" /> Copy</>}

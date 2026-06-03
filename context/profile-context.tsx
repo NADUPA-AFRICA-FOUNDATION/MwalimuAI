@@ -48,8 +48,22 @@ const ProfileContext = createContext<ProfileContextType>({
   lang: 'en', setLang: () => {}, toggleLang: () => {},
 })
 
-const PROFILE_KEY = 'mwalimu_profile'
-const LANG_KEY    = 'mwalimu_lang'
+const PROFILE_KEY  = 'mwalimu_profile'
+const LANG_KEY     = 'mwalimu_lang'
+const LAST_UID_KEY = 'mwalimu_last_uid'
+
+// All localStorage keys that belong to a single user session
+const ALL_USER_KEYS = [
+  PROFILE_KEY, LANG_KEY, LAST_UID_KEY,
+  'mwalimu_community', 'mwalimu_learning_progress', 'mwalimu_activity',
+  'mwalimu_tools_used', 'mwalimu_journal', 'mwalimu_goals',
+  'mwalimu_discussions', 'mwalimu_current_lesson',
+]
+
+function clearLocalUserData() {
+  if (typeof window === 'undefined') return
+  ALL_USER_KEYS.forEach(key => { try { localStorage.removeItem(key) } catch {} })
+}
 
 export function ProfileProvider({ children }: { children: ReactNode }) {
   const [user, setUser]               = useState<User | null>(null)
@@ -60,10 +74,25 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
 
   // Listen to Firebase auth state — single source of truth
   useEffect(() => {
+    if (!auth) {
+      setAuthLoading(false)
+      setMounted(true)
+      return
+    }
+
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser)
 
       if (firebaseUser) {
+        // Detect user switch — clear previous user's local data before loading new user
+        const lastUid = typeof window !== 'undefined' ? localStorage.getItem(LAST_UID_KEY) : null
+        if (lastUid && lastUid !== firebaseUser.uid) {
+          clearLocalUserData()
+        }
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(LAST_UID_KEY, firebaseUser.uid)
+        }
+
         // Try Firestore first, fall back to localStorage cache when offline
         try {
           const snap = await getDoc(doc(db, 'users', firebaseUser.uid))
@@ -132,7 +161,6 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const setLang = useCallback((l: Lang) => {
     setLangState(l)
     try { localStorage.setItem(LANG_KEY, l) } catch {}
-    // Also persist to Firestore profile if signed in
     if (user) {
       setDoc(doc(db, 'users', user.uid), { lang: l }, { merge: true }).catch(() => {})
     }
@@ -151,8 +179,9 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     await fbSignOut(auth)
+    // Clear all user-specific local data so the next user starts fresh
+    clearLocalUserData()
     clearProfile()
-    try { localStorage.removeItem(LANG_KEY) } catch {}
   }, [clearProfile])
 
   return (
