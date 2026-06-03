@@ -63,8 +63,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="min-h-[100dvh] flex flex-col" data-sidebar={sidebarCollapsed ? 'collapsed' : 'expanded'}>
-      {/* ── Sticky header ─────────────────────────────────────────── */}
+    <div className="min-h-[100dvh] flex flex-col">
+      {/* Sticky header */}
       <DashboardHeader
         onLogout={handleLogout}
         onMenuToggle={() => setSidebarOpen(v => !v)}
@@ -72,24 +72,29 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         onToggleCollapse={handleToggleCollapse}
       />
 
-      {/* ── Fixed sidebar (always fixed; desktop uses ML offset on main) */}
-      <SidebarNav
-        isOpen={sidebarOpen}
-        isCollapsed={sidebarCollapsed}
-        onClose={() => setSidebarOpen(false)}
-        onToggleCollapse={handleToggleCollapse}
-      />
+      {/*
+        Flex row: desktop sidebar (sticky, in flow) + main content.
+        The sidebar takes its natural width; main gets flex-1.
+        No margin-left needed — no fixed positioning on desktop.
+      */}
+      <div className="flex flex-1">
+        <SidebarNav
+          isOpen={sidebarOpen}
+          isCollapsed={sidebarCollapsed}
+          onClose={() => setSidebarOpen(false)}
+          onToggleCollapse={handleToggleCollapse}
+        />
 
-      <main
-        id="main-content"
-        tabIndex={-1}
-        className="layout-main flex-1 min-w-0 overflow-x-hidden"
-      >
-        {/* Responsive inner padding: compact on mobile, comfortable on desktop */}
-        <div className="p-4 md:p-6 pb-safe-nav md:pb-6">
-          {children}
-        </div>
-      </main>
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="flex-1 min-w-0 overflow-x-hidden"
+        >
+          <div className="p-4 md:p-6 pb-safe-nav md:pb-6">
+            {children}
+          </div>
+        </main>
+      </div>
 
       <MobileBottomNav />
       <OfflineIndicator />

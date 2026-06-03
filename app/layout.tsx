@@ -58,17 +58,8 @@ export default function RootLayout({
         in globals.css, so layout-critical rules that can't be expressed as scanned
         Tailwind classes are injected here as a plain <style> tag instead.
       */}
+      {/* pb-safe-nav is stripped by Tailwind v4 PostCSS from globals.css — injected here instead */}
       <style href="mwalimu-layout" precedence="default">{`
-        body { overflow-x: hidden; }
-        .sidebar-nav { width: 16rem; }
-        .layout-main { transition: margin-left 300ms ease-in-out; }
-        @media (min-width: 768px) {
-          .sidebar-nav { transition: width 300ms ease-in-out; }
-          [data-sidebar="expanded"]  .sidebar-nav { width: 14rem; }
-          [data-sidebar="collapsed"] .sidebar-nav { width: 4rem;  }
-          [data-sidebar="expanded"]  .layout-main { margin-left: 14rem; }
-          [data-sidebar="collapsed"] .layout-main { margin-left: 4rem;  }
-        }
         .pb-safe-nav { padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px)); }
       `}</style>
       <body className="font-sans antialiased">
