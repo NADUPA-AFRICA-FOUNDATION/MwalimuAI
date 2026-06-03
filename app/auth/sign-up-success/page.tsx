@@ -50,8 +50,10 @@ export default function Page() {
     setCheckState('checking')
     try {
       await reload(user)
-      if (user.emailVerified) {
-        router.push('/dashboard')
+      if (auth?.currentUser?.emailVerified) {
+        // Hard navigation so the profile context re-initialises with the
+        // updated emailVerified flag from a fresh onAuthStateChanged event.
+        window.location.href = '/dashboard'
       } else {
         setCheckState('unverified')
         setTimeout(() => setCheckState('idle'), 3000)

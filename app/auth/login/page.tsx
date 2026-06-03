@@ -137,6 +137,15 @@ export default function Page() {
                     </p>
                   )}
 
+                  <div className="flex justify-end -mt-1">
+                    <Link
+                      href="/auth/forgot-password"
+                      className="text-xs text-primary underline-offset-4 hover:underline"
+                    >
+                      Forgot password?
+                    </Link>
+                  </div>
+
                   <Button type="submit" className="w-full shadow-lg shadow-primary/20" disabled={isLoading}>
                     {isLoading ? <><Spinner className="mr-2 size-4" />Signing in…</> : 'Sign in'}
                   </Button>

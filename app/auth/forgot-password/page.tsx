@@ -1,0 +1,135 @@
+'use client'
+
+import { useState } from 'react'
+import { sendPasswordResetEmail } from 'firebase/auth'
+import { auth } from '@/lib/firebase'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Spinner } from '@/components/ui/spinner'
+import { BackButton } from '@/components/back-button'
+import { GraduationCap, Mail, CheckCircle } from 'lucide-react'
+import Link from 'next/link'
+
+export default function Page() {
+  const [email, setEmail]       = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [sent, setSent]           = useState(false)
+  const [error, setError]         = useState<string | null>(null)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    setIsLoading(true)
+    try {
+      await sendPasswordResetEmail(auth, email.trim())
+      setSent(true)
+    } catch (err: unknown) {
+      const code = (err as { code?: string }).code ?? ''
+      if (code === 'auth/user-not-found' || code === 'auth/invalid-email') {
+        // Don't reveal whether the email exists — just show the success state
+        setSent(true)
+      } else {
+        setError('Could not send reset email. Please try again.')
+      }
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  return (
+    <div className="relative flex min-h-svh w-full items-center justify-center overflow-hidden p-6 md:p-10">
+      <div className="absolute inset-0 -z-10">
+        <div className="absolute -top-24 -left-24 h-80 w-80 rounded-full bg-primary/15 blur-3xl" />
+        <div className="absolute top-1/3 -right-24 h-96 w-96 rounded-full bg-accent/15 blur-3xl" />
+        <div className="absolute -bottom-32 left-1/4 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
+      </div>
+
+      <div className="w-full max-w-md">
+        <div className="flex flex-col gap-6">
+          <BackButton fallbackHref="/auth/login" />
+
+          <Link href="/" className="flex items-center justify-center gap-3 self-center">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary shadow-lg shadow-primary/25">
+              <GraduationCap className="h-5 w-5 text-primary-foreground" aria-hidden="true" />
+            </div>
+            <span className="text-xl font-bold tracking-tight">Mwalimu AI</span>
+          </Link>
+
+          <Card>
+            {sent ? (
+              <>
+                <CardHeader className="text-center space-y-3">
+                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
+                    <CheckCircle className="h-7 w-7 text-green-600 dark:text-green-400" aria-hidden="true" />
+                  </div>
+                  <CardTitle className="text-2xl">Check your email</CardTitle>
+                  <CardDescription>
+                    If an account exists for <strong className="text-foreground">{email}</strong>, you'll receive a password reset link shortly.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground text-center mb-4">
+                    Check your spam folder if it doesn't arrive within a few minutes.
+                  </p>
+                  <Link href="/auth/login">
+                    <Button variant="outline" className="w-full">Back to sign in</Button>
+                  </Link>
+                </CardContent>
+              </>
+            ) : (
+              <>
+                <CardHeader>
+                  <CardTitle className="text-2xl">Reset your password</CardTitle>
+                  <CardDescription>Enter your email and we'll send you a reset link</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handleSubmit} noValidate>
+                    <div className="flex flex-col gap-5">
+                      <div className="grid gap-2">
+                        <Label htmlFor="email">Email</Label>
+                        <div className="relative">
+                          <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+                          <Input
+                            id="email"
+                            type="email"
+                            inputMode="email"
+                            autoComplete="email"
+                            spellCheck={false}
+                            placeholder="you@example.com"
+                            required
+                            className="pl-9"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      {error && (
+                        <p role="alert" className="text-sm text-destructive rounded-lg bg-destructive/10 border border-destructive/20 px-3 py-2">
+                          {error}
+                        </p>
+                      )}
+
+                      <Button type="submit" className="w-full" disabled={isLoading || !email.trim()}>
+                        {isLoading ? <><Spinner className="mr-2 size-4" />Sending…</> : 'Send reset email'}
+                      </Button>
+                    </div>
+
+                    <div className="mt-4 text-center text-sm text-muted-foreground">
+                      Remember your password?{' '}
+                      <Link href="/auth/login" className="font-medium text-primary underline-offset-4 hover:underline">
+                        Sign in
+                      </Link>
+                    </div>
+                  </form>
+                </CardContent>
+              </>
+            )}
+          </Card>
+        </div>
+      </div>
+    </div>
+  )
+}
