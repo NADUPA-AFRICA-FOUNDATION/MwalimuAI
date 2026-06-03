@@ -17,6 +17,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       router.push('/auth/login')   // not authenticated → login
       return
     }
+    if (!user.emailVerified) {
+      router.push('/auth/sign-up-success')  // authenticated but unverified → verify
+      return
+    }
     if (mounted && !profile?.completed) {
       router.push('/onboarding')   // authenticated but no profile → onboarding
     }

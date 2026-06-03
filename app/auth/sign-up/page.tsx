@@ -10,7 +10,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { Eye, EyeOff, GraduationCap } from 'lucide-react'
-import { createUserWithEmailAndPassword } from 'firebase/auth'
+import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
 
 function mapFirebaseError(code: string): string {
@@ -50,9 +50,9 @@ export default function Page() {
 
     setIsLoading(true)
     try {
-      await createUserWithEmailAndPassword(auth, email.trim(), password)
-      // Firebase auto-signs the user in after creation — go straight to onboarding
-      router.push('/onboarding')
+      const { user } = await createUserWithEmailAndPassword(auth, email.trim(), password)
+      await sendEmailVerification(user)
+      router.push('/auth/sign-up-success')
     } catch (err: unknown) {
       const code = (err as { code?: string }).code ?? ''
       setError(mapFirebaseError(code))

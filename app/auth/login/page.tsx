@@ -43,7 +43,11 @@ export default function Page() {
     setError(null)
     setIsLoading(true)
     try {
-      await signInWithEmailAndPassword(auth, email.trim(), password)
+      const { user } = await signInWithEmailAndPassword(auth, email.trim(), password)
+      if (!user.emailVerified) {
+        router.push('/auth/sign-up-success')
+        return
+      }
       router.push('/dashboard')
     } catch (err: unknown) {
       const code = (err as { code?: string }).code ?? ''
