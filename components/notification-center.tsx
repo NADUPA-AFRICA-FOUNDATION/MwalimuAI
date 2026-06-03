@@ -18,53 +18,60 @@ interface Notification {
   link?: string
 }
 
-const initialNotifications: Notification[] = [
+const SEED_NOTIFICATIONS: Omit<Notification, 'read'>[] = [
   {
-    id: '1',
+    id: 'welcome',
     type: 'announcement',
     title: 'Welcome to Mwalimu AI!',
     message: 'Start your professional development journey with our AI-powered platform.',
     time: 'Just now',
-    read: false,
     link: '/dashboard',
   },
   {
-    id: '2',
+    id: 'module-1',
     type: 'course',
     title: 'New Module Available',
     message: 'CBC Fundamentals module is now available. Start learning today!',
     time: '5 min ago',
-    read: false,
     link: '/dashboard/modules/1',
   },
   {
-    id: '3',
-    type: 'achievement',
-    title: 'Badge Earned!',
-    message: 'Congratulations! You earned the "Quick Starter" badge.',
-    time: '1 hour ago',
-    read: false,
-    link: '/dashboard/achievements',
-  },
-  {
-    id: '4',
-    type: 'community',
-    title: 'New Reply to Your Post',
-    message: 'Sarah M. replied to your discussion about formative assessment.',
-    time: '2 hours ago',
-    read: true,
-    link: '/dashboard/community',
-  },
-  {
-    id: '5',
+    id: 'assessment-cta',
     type: 'course',
     title: 'Complete Your Assessment',
-    message: 'Take your needs assessment to get personalized learning recommendations.',
+    message: 'Take your needs assessment to get personalised learning recommendations.',
     time: '1 day ago',
-    read: true,
     link: '/dashboard/assessment',
   },
 ]
+
+const NOTIF_KEY = 'mwalimu_notifications_state'
+
+interface NotifState {
+  read: string[]       // IDs the user has marked as read
+  dismissed: string[]  // IDs the user has deleted
+}
+
+function loadState(): NotifState {
+  if (typeof window === 'undefined') return { read: [], dismissed: [] }
+  try {
+    const raw = localStorage.getItem(NOTIF_KEY)
+    return raw ? (JSON.parse(raw) as NotifState) : { read: [], dismissed: [] }
+  } catch {
+    return { read: [], dismissed: [] }
+  }
+}
+
+function saveState(state: NotifState) {
+  if (typeof window === 'undefined') return
+  try { localStorage.setItem(NOTIF_KEY, JSON.stringify(state)) } catch {}
+}
+
+function buildNotifications(state: NotifState): Notification[] {
+  return SEED_NOTIFICATIONS
+    .filter(n => !state.dismissed.includes(n.id))
+    .map(n => ({ ...n, read: state.read.includes(n.id) }))
+}
 
 const notificationIcons: Record<NotificationType, typeof BookOpen> = {
   course: BookOpen,
@@ -82,13 +89,17 @@ const notificationColors: Record<NotificationType, string> = {
 
 export function NotificationCenter() {
   const [isOpen, setIsOpen] = useState(false)
-  const [notifications, setNotifications] = useState<Notification[]>(initialNotifications)
+  const [notifications, setNotifications] = useState<Notification[]>([])
   const dropdownRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
 
-  const unreadCount = notifications.filter((n) => !n.read).length
+  // Load persisted state once on mount
+  useEffect(() => {
+    setNotifications(buildNotifications(loadState()))
+  }, [])
 
-  // Close dropdown when clicking outside
+  const unreadCount = notifications.filter(n => !n.read).length
+
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -99,7 +110,6 @@ export function NotificationCenter() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  // Close on Escape key
   useEffect(() => {
     function handleEscape(event: KeyboardEvent) {
       if (event.key === 'Escape') setIsOpen(false)
@@ -109,26 +119,42 @@ export function NotificationCenter() {
   }, [])
 
   const markAsRead = (id: string) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-    )
+    const state = loadState()
+    if (!state.read.includes(id)) {
+      state.read = [...state.read, id]
+      saveState(state)
+    }
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n))
   }
 
   const markAllAsRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
+    const state = loadState()
+    const unreadIds = notifications.filter(n => !n.read).map(n => n.id)
+    state.read = [...new Set([...state.read, ...unreadIds])]
+    saveState(state)
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })))
   }
 
   const deleteNotification = (id: string) => {
-    setNotifications((prev) => prev.filter((n) => n.id !== id))
+    const state = loadState()
+    if (!state.dismissed.includes(id)) {
+      state.dismissed = [...state.dismissed, id]
+      saveState(state)
+    }
+    setNotifications(prev => prev.filter(n => n.id !== id))
   }
 
   const clearAll = () => {
+    const state = loadState()
+    state.dismissed = [...new Set([...state.dismissed, ...notifications.map(n => n.id)])]
+    saveState(state)
     setNotifications([])
   }
 
   const handleNotificationClick = (notification: Notification) => {
     markAsRead(notification.id)
     if (notification.link) router.push(notification.link)
+    setIsOpen(false)
   }
 
   return (
@@ -184,10 +210,8 @@ export function NotificationCenter() {
             {notifications.length === 0 ? (
               <div className="py-12 text-center">
                 <Bell className="w-10 h-10 mx-auto text-muted-foreground/30 mb-3" aria-hidden="true" />
-                <p className="text-sm text-muted-foreground">No notifications yet</p>
-                <p className="text-xs text-muted-foreground/70 mt-1">
-                  We&apos;ll notify you when something arrives
-                </p>
+                <p className="text-sm text-muted-foreground">No notifications</p>
+                <p className="text-xs text-muted-foreground/70 mt-1">You&apos;re all caught up</p>
               </div>
             ) : (
               <ul role="list" className="divide-y divide-border">
@@ -212,18 +236,13 @@ export function NotificationCenter() {
                       aria-label={`${notification.title}${!notification.read ? ' (unread)' : ''}`}
                     >
                       <div className="flex gap-3">
-                        {/* Icon */}
                         <div
-                          className={cn(
-                            'flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center',
-                            notificationColors[notification.type]
-                          )}
+                          className={cn('flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center', notificationColors[notification.type])}
                           aria-hidden="true"
                         >
                           <Icon className="w-4 h-4" aria-hidden="true" />
                         </div>
 
-                        {/* Content */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2">
                             <p className={cn('text-sm font-medium truncate', !notification.read && 'text-foreground')}>
@@ -233,22 +252,14 @@ export function NotificationCenter() {
                               <span className="flex-shrink-0 w-2 h-2 bg-primary rounded-full mt-1.5" aria-hidden="true" />
                             )}
                           </div>
-                          <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
-                            {notification.message}
-                          </p>
-                          <p className="text-[10px] text-muted-foreground/70 mt-1">
-                            {notification.time}
-                          </p>
+                          <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{notification.message}</p>
+                          <p className="text-[10px] text-muted-foreground/70 mt-1">{notification.time}</p>
                         </div>
 
-                        {/* Actions (visible on hover) */}
                         <div className="flex-shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           {!notification.read && (
                             <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                markAsRead(notification.id)
-                              }}
+                              onClick={(e) => { e.stopPropagation(); markAsRead(notification.id) }}
                               className="p-1.5 hover:bg-background rounded-lg transition-colors focus-visible:ring-2 focus-visible:ring-ring"
                               aria-label="Mark as read"
                             >
@@ -256,10 +267,7 @@ export function NotificationCenter() {
                             </button>
                           )}
                           <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              deleteNotification(notification.id)
-                            }}
+                            onClick={(e) => { e.stopPropagation(); deleteNotification(notification.id) }}
                             className="p-1.5 hover:bg-background rounded-lg transition-colors focus-visible:ring-2 focus-visible:ring-ring"
                             aria-label="Delete notification"
                           >
@@ -274,7 +282,6 @@ export function NotificationCenter() {
             )}
           </div>
 
-          {/* Footer */}
           {notifications.length > 0 && (
             <div className="px-4 py-3 border-t border-border bg-muted/30 flex items-center justify-between">
               <button
@@ -287,10 +294,7 @@ export function NotificationCenter() {
                 variant="ghost"
                 size="sm"
                 className="text-xs h-7"
-                onClick={() => {
-                  setIsOpen(false)
-                  router.push('/dashboard/settings')
-                }}
+                onClick={() => { setIsOpen(false); router.push('/dashboard/settings') }}
               >
                 Notification settings
               </Button>

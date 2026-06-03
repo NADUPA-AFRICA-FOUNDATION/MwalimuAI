@@ -17,6 +17,9 @@ export default function DashboardPage() {
   const [streak, setStreak] = useState({ current: 0, longest: 0, totalDays: 0, weekDays: Array(7).fill(false) as boolean[] })
   const [badgesEarned, setBadgesEarned] = useState(0)
   const [completedLessons, setCompletedLessons] = useState(0)
+  const [toolsUsed, setToolsUsed] = useState(0)
+  const [communityPosts, setCommunityPosts] = useState(0)
+  const [learningProgress, setLearningProgress] = useState(0)   // % of first in-progress program
   const [showPaymentSuccess, setShowPaymentSuccess] = useState(false)
 
   useEffect(() => {
@@ -26,6 +29,22 @@ export default function DashboardPage() {
     const input = getBadgeInput()
     setBadgesEarned(computeBadges(input).filter(b => b.earned).length)
     setCompletedLessons(input.completedLessons)
+    setToolsUsed(input.toolsUsed)
+    setCommunityPosts(input.communityPosts)
+
+    // Compute progress of the furthest-along learning-path program
+    try {
+      const raw = localStorage.getItem('mwalimu_learning_progress')
+      if (raw) {
+        const all = JSON.parse(raw) as Record<string, { completedLessons?: string[] }>
+        const maxLessons = Object.values(all).reduce(
+          (best, p) => Math.max(best, p.completedLessons?.length ?? 0), 0
+        )
+        // Assume programs average ~12 lessons; cap display at 99%
+        setLearningProgress(Math.min(99, Math.round((maxLessons / 12) * 100)))
+      }
+    } catch {}
+
     const params = new URLSearchParams(window.location.search)
     if (params.get('payment') === 'success') setShowPaymentSuccess(true)
   }, [])
@@ -109,17 +128,17 @@ export default function DashboardPage() {
         <div className="glass rounded-2xl p-5 hover:shadow-lg hover:shadow-accent/8 hover:-translate-y-0.5 transition-all duration-200">
           <div className="flex items-start justify-between mb-4">
             <div>
-              <p className="text-xs text-muted-foreground mb-1 font-medium">AI chat sessions</p>
-              <p className="text-3xl font-bold text-accent tabular-nums">11</p>
-              <p className="text-xs text-muted-foreground mt-1">this week</p>
+              <p className="text-xs text-muted-foreground mb-1 font-medium">Tools used</p>
+              <p className="text-3xl font-bold text-accent tabular-nums">{toolsUsed}</p>
+              <p className="text-xs text-muted-foreground mt-1">{toolsUsed === 0 ? 'Try a Teacher Tool' : toolsUsed === 1 ? 'tool tried' : 'tools tried'}</p>
             </div>
             <div className="w-11 h-11 bg-gradient-to-br from-accent/20 to-accent/5 rounded-xl flex items-center justify-center shrink-0">
               <Sparkles className="w-5 h-5 text-accent" />
             </div>
           </div>
-          <div className="flex items-center gap-1.5 text-xs text-primary font-medium">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <TrendingUp className="w-3.5 h-3.5" />
-            +18% from last week
+            {toolsUsed === 0 ? 'Lesson plans, feedback & more' : `${7 - Math.min(toolsUsed, 7)} more to explore`}
           </div>
         </div>
 
@@ -127,8 +146,8 @@ export default function DashboardPage() {
           <div className="flex items-start justify-between mb-4">
             <div>
               <p className="text-xs text-muted-foreground mb-1 font-medium">Community posts</p>
-              <p className="text-3xl font-bold gradient-text tabular-nums">3</p>
-              <p className="text-xs text-muted-foreground mt-1">contributions</p>
+              <p className="text-3xl font-bold gradient-text tabular-nums">{communityPosts}</p>
+              <p className="text-xs text-muted-foreground mt-1">{communityPosts === 0 ? 'Nothing posted yet' : communityPosts === 1 ? 'contribution' : 'contributions'}</p>
             </div>
             <div className="w-11 h-11 bg-gradient-to-br from-primary/20 to-primary/5 rounded-xl flex items-center justify-center shrink-0">
               <Users className="w-5 h-5 text-primary" />
@@ -136,7 +155,7 @@ export default function DashboardPage() {
           </div>
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Star className="w-3.5 h-3.5 fill-accent text-accent" />
-            Active contributor
+            {communityPosts === 0 ? 'Share ideas with colleagues' : 'Active contributor'}
           </div>
         </div>
 
@@ -176,16 +195,25 @@ export default function DashboardPage() {
                 <BookOpen className="w-7 h-7 text-primary" />
               </div>
               <div className="flex-1 min-w-0">
-                <span className="text-xs bg-primary/10 text-primary px-2.5 py-1 rounded-full font-semibold inline-block mb-2">In Progress</span>
-                <h3 className="font-semibold text-sm mb-1 truncate tracking-tight">CBC Assessment Strategies</h3>
-                <p className="text-xs text-muted-foreground mb-3 leading-relaxed">Master formative and summative assessment techniques</p>
-                <div className="flex items-center gap-3">
-                  <Progress value={65} className="flex-1 h-1.5" />
-                  <span className="text-xs font-semibold text-primary tabular-nums">65%</span>
-                </div>
+                <span className={`text-xs px-2.5 py-1 rounded-full font-semibold inline-block mb-2 ${learningProgress > 0 ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
+                  {learningProgress > 0 ? 'In Progress' : 'Start Learning'}
+                </span>
+                <h3 className="font-semibold text-sm mb-1 truncate tracking-tight">CBC Foundations Program</h3>
+                <p className="text-xs text-muted-foreground mb-3 leading-relaxed">Build your core CBC knowledge and classroom skills</p>
+                {learningProgress > 0 ? (
+                  <div className="flex items-center gap-3">
+                    <Progress value={learningProgress} className="flex-1 h-1.5" />
+                    <span className="text-xs font-semibold text-primary tabular-nums">{learningProgress}%</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Clock className="w-3.5 h-3.5 shrink-0" />
+                    <span>Begin your first lesson today</span>
+                  </div>
+                )}
               </div>
             </div>
-            <Link href="/dashboard/modules" className="absolute inset-0" aria-label="Continue CBC Assessment Strategies" />
+            <Link href="/dashboard/learning" className="absolute inset-0" aria-label="CBC Foundations Program" />
           </div>
 
           <div className="glass rounded-2xl p-5 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 relative cursor-pointer group">
