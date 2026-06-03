@@ -1,0 +1,47 @@
+{
+  "name": "Mwalimu AI",
+  "short_name": "Mwalimu AI",
+  "description": "AI-powered professional development for Kenyan CBC teachers",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f9fcfb",
+  "theme_color": "#f9fcfb",
+  "lang": "en",
+  "categories": ["education"],
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-light-32x32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/apple-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "apple touch icon"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "AI Coach",
+      "short_name": "Coach",
+      "url": "/dashboard/ai-coach",
+      "description": "Chat with your AI teaching coach"
+    },
+    {
+      "name": "Teacher Tools",
+      "short_name": "Tools",
+      "url": "/dashboard/tools",
+      "description": "Lesson plans, assessments, and more"
+    }
+  ]
+}

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { DashboardHeader } from '@/components/dashboard-header'
 import { SidebarNav } from '@/components/sidebar-nav'
 import { MobileBottomNav } from '@/components/mobile-bottom-nav'
+import { OfflineIndicator } from '@/components/offline-indicator'
 import { useProfile } from '@/context/profile-context'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -56,6 +57,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </main>
       </div>
       <MobileBottomNav />
+      <OfflineIndicator />
     </div>
   )
 }

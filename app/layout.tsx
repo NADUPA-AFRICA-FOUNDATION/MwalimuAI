@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { Providers } from '@/components/providers'
 import { GradientBackground } from '@/components/gradient-background'
+import { SWRegister } from '@/components/sw-register'
 import './globals.css'
 
 const _geist = Geist({ subsets: ["latin"] });
@@ -12,6 +13,12 @@ export const metadata: Metadata = {
   title: 'Mwalimu AI - Teacher Professional Development',
   description: 'AI-powered professional development platform for Kenyan CBC teachers',
   generator: 'v0.app',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Mwalimu AI',
+  },
   icons: {
     icon: [
       {
@@ -58,6 +65,7 @@ export default function RootLayout({
           {children}
           {process.env.NODE_ENV === 'production' && <Analytics />}
         </Providers>
+        <SWRegister />
       </body>
     </html>
   )
