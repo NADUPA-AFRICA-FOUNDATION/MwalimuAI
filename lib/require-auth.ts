@@ -1,4 +1,4 @@
-import { adminAuth } from './firebase-admin'
+import { getAdminAuth } from './firebase-admin'
 
 /**
  * Verifies the Firebase ID token in the Authorization header.
@@ -16,7 +16,7 @@ export async function requireAuth(req: Request): Promise<Response | null> {
     })
   }
   try {
-    await adminAuth.verifyIdToken(token)
+    await getAdminAuth().verifyIdToken(token)
     return null
   } catch {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
