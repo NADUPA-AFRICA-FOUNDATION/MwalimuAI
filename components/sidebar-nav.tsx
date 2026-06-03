@@ -73,7 +73,9 @@ export function SidebarNav({
       {/* ── Sidebar panel ────────────────────────────────────────────── */}
       <nav
         className={cn(
-          // Position: fixed on both mobile & desktop (avoids sticky/overflow-x:hidden conflicts)
+          // sidebar-nav: width is controlled by globals.css via [data-sidebar] on root div
+          'sidebar-nav',
+          // Position: fixed on both mobile & desktop
           'fixed top-0 left-0 z-30',
           // On desktop, start below the 57px sticky header
           'md:top-[57px]',
@@ -85,12 +87,8 @@ export function SidebarNav({
           'bg-sidebar border-r border-border/50',
           // Clip content that's wider than the sidebar (e.g. text during collapse)
           'overflow-x-hidden',
-          // Mobile: always 256px wide, slides in/out
-          'w-64',
-          // Desktop: expand (224px) or collapse (64px)
-          isCollapsed ? 'md:w-16' : 'md:w-56',
-          // Smooth slide + width transitions
-          'transition-all duration-300 ease-in-out',
+          // Smooth mobile slide transition (width handled by globals.css)
+          'transition-transform duration-300 ease-in-out',
           // Mobile open/close; desktop always visible
           isOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full md:translate-x-0',
         )}
