@@ -48,10 +48,14 @@ export default function ActionResearchPage() {
   const setInput = (v: string) => setStepData(prev => ({ ...prev, [currentStep]: { ...prev[currentStep], input: v } }))
 
   const buildPrompt = () => {
+    // Truncate each prior step to 150 chars to keep cumulative context lean
     const context = STEPS.slice(0, currentStep - 1)
-      .map(s => `${s.title}:\n${stepData[s.id].input}`)
+      .map(s => {
+        const snippet = stepData[s.id].input.slice(0, 150)
+        return `${s.title}: ${snippet}${stepData[s.id].input.length > 150 ? '…' : ''}`
+      })
       .filter(s => s.trim())
-      .join('\n\n')
+      .join('\n')
 
     return `${context ? `Context from previous steps:\n${context}\n\n` : ''}Current step — ${step.title}:\n${data.input}`
   }

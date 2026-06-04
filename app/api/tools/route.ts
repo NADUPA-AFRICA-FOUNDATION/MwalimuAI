@@ -215,6 +215,17 @@ async function isOllamaAvailable(): Promise<boolean> {
   }
 }
 
+// Tight per-tool ceilings — these match each prompt's stated output length
+const MAX_OUTPUT_TOKENS: Record<string, number> = {
+  'lesson-plan':         1600,
+  'report-card':          200, // "60–80 words exactly"
+  'differentiation':      800,
+  'assignment-feedback':  700,
+  'policy-explainer':     900,
+  'action-research':      900,
+  'parent-comms':         600,
+}
+
 export async function POST(req: Request) {
   const authError = await requireAuth(req)
   if (authError) return authError
@@ -231,13 +242,15 @@ Kanuni: "assessment" → "tathmini", "lesson plan" → "mpango wa somo", "compet
 
   const canUseGroq = process.env.GROQ_API_KEY && !groqOnCooldown()
 
+  const maxOutputTokens = MAX_OUTPUT_TOKENS[tool] ?? 900
+
   if (canUseGroq) {
     const result = streamText({
       model: groq(GROQ_MODEL),
       system,
       prompt,
       temperature: 0.6,
-      maxOutputTokens: 1800,
+      maxOutputTokens,
       maxRetries: 0,
       onError({ error }: { error: unknown }) {
         const msg = String(error)
@@ -270,7 +283,7 @@ Kanuni: "assessment" → "tathmini", "lesson plan" → "mpango wa somo", "compet
     system,
     prompt,
     temperature: 0.6,
-    maxOutputTokens: 1800,
+    maxOutputTokens,
     maxRetries: 0,
   })
   const response = result.toTextStreamResponse()

@@ -152,10 +152,13 @@ function Sidebar({ conversations, selectedId, loading, onSelect, onNewChat, onDe
               </p>
               <div className="space-y-0.5">
                 {group.items.map(conv => (
-                  <button
+                  <div
                     key={conv.id}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => handleSelect(conv.id)}
-                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left text-sm transition-colors group relative ${
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') handleSelect(conv.id) }}
+                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left text-sm transition-colors group relative cursor-pointer ${
                       selectedId === conv.id
                         ? 'bg-primary/10 text-foreground'
                         : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
@@ -170,7 +173,7 @@ function Sidebar({ conversations, selectedId, loading, onSelect, onNewChat, onDe
                     >
                       <Trash2 className="w-3 h-3" />
                     </button>
-                  </button>
+                  </div>
                 ))}
               </div>
             </div>
@@ -283,8 +286,12 @@ function ChatPanel({
     if (!trimmed || isLoading) return
     setInput('')
 
+    // Send to AI immediately — don't block on DB writes
+    sendMessage({ text: trimmed })
+
     let convId = convIdRef.current
 
+    // Create conversation on first message (runs after send, in background)
     if (!convId) {
       const { data } = await supabase.from('ai_conversations').insert({
         user_id: userId,
@@ -298,13 +305,12 @@ function ChatPanel({
       }
     }
 
+    // Save user message (fire-and-forget)
     if (convId) {
       supabase.from('ai_messages').insert({
         conversation_id: convId, role: 'user', content: trimmed,
       }).then(() => {}, () => {})
     }
-
-    sendMessage({ text: trimmed })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [input, isLoading, userId, supabase, onConversationCreated, sendMessage])
 
