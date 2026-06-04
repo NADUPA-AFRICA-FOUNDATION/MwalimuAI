@@ -13,11 +13,18 @@ import { Eye, EyeOff, GraduationCap } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 function mapError(msg: string): string {
-  if (msg.includes('already registered') || msg.includes('already been registered'))
+  if (msg.includes('already registered') || msg.includes('already been registered') || msg.includes('already exists'))
     return 'An account with this email already exists. Try signing in instead.'
   if (msg.includes('valid email')) return 'Please enter a valid email address.'
   if (msg.includes('least 6'))    return 'Password must be at least 6 characters.'
-  return 'Sign-up failed. Please try again.'
+  if (msg.includes('rate limit') || msg.includes('after 60'))
+    return 'Too many attempts. Please wait 60 seconds and try again.'
+  if (msg.includes('disabled') || msg.includes('not enabled'))
+    return 'Email sign-up is currently disabled. Please contact support.'
+  if (msg.includes('redirect'))
+    return 'Configuration error: redirect URL not allowed. Please contact support.'
+  // Surface the raw Supabase message so we can diagnose unexpected errors
+  return `Sign-up failed: ${msg}`
 }
 
 export default function Page() {
@@ -43,7 +50,7 @@ export default function Page() {
         email: email.trim(),
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/login`,
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
       })
       if (authError) { setError(mapError(authError.message)); return }
