@@ -418,9 +418,6 @@ export default function OnboardingPage() {
           )}
         </div>
 
-        <button onClick={skip} className="block mx-auto mt-4 text-sm text-muted-foreground hover:text-foreground transition-colors">
-          {t('onboard.skip')}
-        </button>
       </div>
     </div>
   )

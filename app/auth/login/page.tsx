@@ -13,10 +13,15 @@ import { Eye, EyeOff, GraduationCap, Lock, Mail } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 function mapError(msg: string): string {
-  if (msg.includes('Invalid login credentials')) return 'Incorrect email or password.'
-  if (msg.includes('Email not confirmed'))       return 'Please verify your email before signing in.'
-  if (msg.includes('too many requests'))         return 'Too many attempts. Please wait a moment and try again.'
-  return 'Sign-in failed. Please try again.'
+  if (msg.includes('Invalid login credentials') || msg.includes('invalid_credentials'))
+    return 'Incorrect email or password.'
+  if (msg.includes('Email not confirmed') || msg.includes('email_not_confirmed'))
+    return 'Please verify your email before signing in.'
+  if (msg.includes('too many requests') || msg.includes('rate limit'))
+    return 'Too many attempts. Please wait a moment and try again.'
+  if (msg.includes('disabled') || msg.includes('not enabled'))
+    return 'Email sign-in is currently disabled. Please contact support.'
+  return `Sign-in failed: ${msg}`
 }
 
 export default function Page() {

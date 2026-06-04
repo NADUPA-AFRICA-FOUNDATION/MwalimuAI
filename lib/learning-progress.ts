@@ -1,6 +1,7 @@
 import type { Program } from './learning-paths-data'
+import { createClient } from '@/lib/supabase/client'
 
-const KEY = 'mwalimu_learning_progress'
+const KEY      = 'mwalimu_learning_progress'
 const DISC_KEY = 'mwalimu_discussions'
 
 export interface DiscussionPost {
@@ -23,6 +24,14 @@ export interface ProgramProgress {
 
 export type AllProgress = Record<string, ProgramProgress>
 
+// ── Module-level user ID — set by profile-context on auth ──────────
+let _userId: string | null = null
+
+export function setLearningProgressUser(userId: string | null) {
+  _userId = userId
+}
+
+// ── localStorage helpers ───────────────────────────────────────────
 function read(): AllProgress {
   if (typeof window === 'undefined') return {}
   try { return JSON.parse(localStorage.getItem(KEY) ?? '{}') } catch { return {} }
@@ -33,25 +42,76 @@ function write(data: AllProgress) {
   try { localStorage.setItem(KEY, JSON.stringify(data)) } catch {}
 }
 
+// ── Supabase background sync ───────────────────────────────────────
+function cloudSync(programId: string, p: ProgramProgress) {
+  if (!_userId) return
+  const supabase = createClient()
+  supabase.from('learning_progress').upsert({
+    user_id:               _userId,
+    program_id:            programId,
+    completed_lessons:     p.completedLessons,
+    reflections:           p.reflections,
+    pre_assessment:        p.preAssessment  ?? null,
+    post_assessment:       p.postAssessment ?? null,
+    assignment:            p.assignment     ?? null,
+    certificate_earned_at: p.certificateEarnedAt ?? null,
+    cohort_joined:         p.cohortJoined   ?? false,
+    updated_at:            new Date().toISOString(),
+  }).then(() => {}, () => {})
+}
+
+// Called on sign-in: pulls cloud data into localStorage cache
+export async function loadProgressFromCloud(userId: string): Promise<void> {
+  try {
+    const supabase = createClient()
+    const { data } = await supabase
+      .from('learning_progress')
+      .select('*')
+      .eq('user_id', userId)
+
+    if (!data || data.length === 0) return
+
+    const cloud: AllProgress = {}
+    for (const row of data) {
+      if (!row.program_id) continue
+      cloud[row.program_id] = {
+        completedLessons:    row.completed_lessons     ?? [],
+        reflections:         row.reflections           ?? {},
+        preAssessment:       row.pre_assessment        ?? undefined,
+        postAssessment:      row.post_assessment       ?? undefined,
+        assignment:          row.assignment            ?? undefined,
+        certificateEarnedAt: row.certificate_earned_at ?? undefined,
+        cohortJoined:        row.cohort_joined         ?? false,
+      }
+    }
+    // Cloud wins — merge over local cache
+    write({ ...read(), ...cloud })
+  } catch { /* keep local cache on network failure */ }
+}
+
+// ── Public read helpers ────────────────────────────────────────────
 export function getProgress(programId: string): ProgramProgress {
   return read()[programId] ?? { completedLessons: [], reflections: {} }
 }
 
+// ── Write helpers (localStorage + background cloud sync) ──────────
 export function completeLesson(programId: string, moduleId: string, lessonId: string) {
   const all = read()
-  const p = all[programId] ?? { completedLessons: [], reflections: {} }
+  const p   = all[programId] ?? { completedLessons: [], reflections: {} }
   const key = `${moduleId}/${lessonId}`
   if (!p.completedLessons.includes(key)) p.completedLessons = [...p.completedLessons, key]
   all[programId] = p
   write(all)
+  cloudSync(programId, p)
 }
 
 export function saveReflection(programId: string, moduleId: string, lessonId: string, text: string) {
   const all = read()
-  const p = all[programId] ?? { completedLessons: [], reflections: {} }
+  const p   = all[programId] ?? { completedLessons: [], reflections: {} }
   p.reflections[`${moduleId}/${lessonId}`] = text
   all[programId] = p
   write(all)
+  cloudSync(programId, p)
 }
 
 export function saveAssessment(
@@ -60,36 +120,40 @@ export function saveAssessment(
   score: number, total: number, answers: number[]
 ) {
   const all = read()
-  const p = all[programId] ?? { completedLessons: [], reflections: {} }
+  const p   = all[programId] ?? { completedLessons: [], reflections: {} }
   p[type] = { score, total, date: new Date().toLocaleDateString(), answers }
   all[programId] = p
   write(all)
+  cloudSync(programId, p)
 }
 
 export function saveAssignment(programId: string, text: string, feedback: string) {
   const all = read()
-  const p = all[programId] ?? { completedLessons: [], reflections: {} }
+  const p   = all[programId] ?? { completedLessons: [], reflections: {} }
   p.assignment = { text, feedback, submittedAt: new Date().toLocaleDateString() }
   all[programId] = p
   write(all)
+  cloudSync(programId, p)
 }
 
 export function earnCertificate(programId: string) {
   const all = read()
-  const p = all[programId] ?? { completedLessons: [], reflections: {} }
+  const p   = all[programId] ?? { completedLessons: [], reflections: {} }
   if (!p.certificateEarnedAt) {
     p.certificateEarnedAt = new Date().toLocaleDateString()
   }
   all[programId] = p
   write(all)
+  cloudSync(programId, p)
 }
 
 export function joinCohort(programId: string) {
   const all = read()
-  const p = all[programId] ?? { completedLessons: [], reflections: {} }
+  const p   = all[programId] ?? { completedLessons: [], reflections: {} }
   p.cohortJoined = true
   all[programId] = p
   write(all)
+  cloudSync(programId, p)
 }
 
 export function isLessonComplete(progress: ProgramProgress, moduleId: string, lessonId: string) {
@@ -107,7 +171,7 @@ export function isProgramComplete(program: Program, progress: ProgramProgress): 
   return progress.completedLessons.length >= total && !!progress.postAssessment
 }
 
-/* ── Discussion helpers ──────────────────────────────────── */
+/* ── Discussion helpers (localStorage) ──────────────────────────── */
 type AllDiscussions = Record<string, DiscussionPost[]>
 
 function readDisc(): AllDiscussions {
@@ -122,8 +186,8 @@ function writeDisc(data: AllDiscussions) {
 
 const SEED_POSTS: Record<string, { author: string; content: string }[]> = {
   default: [
-    { author: 'Mary Wanjiku, Kiambu',    content: 'This lesson really clicked for me — I\'ve been trying to apply this in my Grade 5 class and the learners are so much more engaged. Has anyone else noticed the same?' },
-    { author: 'Samuel Ochieng, Kisumu',  content: 'I had a question about this topic. How do you handle it when some learners are way ahead and others are still catching up? I\'d love to hear different approaches.' },
+    { author: 'Mary Wanjiku, Kiambu',   content: 'This lesson really clicked for me — I\'ve been trying to apply this in my Grade 5 class and the learners are so much more engaged. Has anyone else noticed the same?' },
+    { author: 'Samuel Ochieng, Kisumu', content: 'I had a question about this topic. How do you handle it when some learners are way ahead and others are still catching up? I\'d love to hear different approaches.' },
   ],
 }
 
@@ -161,7 +225,7 @@ export function addDiscussionPost(
   return post
 }
 
-/* ── Peer review sample data ─────────────────────────────── */
+/* ── Peer review sample data ──────────────────────────────────────── */
 export const PEER_SUBMISSIONS = [
   {
     id: 'peer-1',

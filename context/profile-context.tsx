@@ -6,6 +6,7 @@ import {
 import { type User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
 import { syncActivityFromSupabase } from '@/lib/streak'
+import { setLearningProgressUser, loadProgressFromCloud } from '@/lib/learning-progress'
 import { type Lang } from '@/lib/i18n'
 
 export interface TeacherProfile {
@@ -114,6 +115,9 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
 
           // Sync streak activity from Supabase → localStorage (background)
           syncActivityFromSupabase(nextUser.id).catch(() => {})
+          // Wire learning progress cloud sync and load from cloud
+          setLearningProgressUser(nextUser.id)
+          loadProgressFromCloud(nextUser.id).catch(() => {})
         } else {
           setProfileState(null)
         }
@@ -179,6 +183,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     await supabase.auth.signOut()
+    setLearningProgressUser(null)
     clearLocalUserData()
     clearProfile()
   }, [clearProfile, supabase])

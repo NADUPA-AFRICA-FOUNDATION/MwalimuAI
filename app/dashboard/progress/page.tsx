@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -8,10 +8,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Progress } from '@/components/ui/progress'
 import { BackButton } from '@/components/back-button'
 import { useProfile } from '@/context/profile-context'
+import { createClient } from '@/lib/supabase/client'
 import { getT, getCategories } from '@/lib/i18n'
 import {
   TrendingUp, Plus, Trash2, CheckCircle2, Circle,
-  ChevronDown, ChevronUp, X,
+  ChevronDown, ChevronUp, X, Loader2,
 } from 'lucide-react'
 
 type Category = 'assessment' | 'pedagogy' | 'digital' | 'community' | 'wellbeing' | 'other'
@@ -25,8 +26,6 @@ interface Goal {
   milestones: Milestone[]; createdAt: string
 }
 
-const STORAGE_KEY = 'mwalimu_goals'
-
 const CATEGORY_COLORS: Record<Category, string> = {
   assessment: 'bg-primary/10 text-primary border-primary/20',
   pedagogy:   'bg-accent/10 text-accent border-accent/20',
@@ -38,43 +37,67 @@ const CATEGORY_COLORS: Record<Category, string> = {
 
 function uid() { return Math.random().toString(36).slice(2, 9) }
 
-export default function ProgressPage() {
-  const { lang } = useProfile()
-  const t = getT(lang)
-  const cats = getCategories(lang)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function dbToGoal(row: any): Goal {
+  return {
+    id:         row.id,
+    title:      row.title    ?? '',
+    category:   row.category ?? 'other',
+    milestones: row.milestones ?? [],
+    createdAt:  row.created_at
+      ? new Date(row.created_at).toLocaleDateString()
+      : new Date().toLocaleDateString(),
+  }
+}
 
-  const [goals, setGoals] = useState<Goal[]>([])
+export default function ProgressPage() {
+  const { lang, user } = useProfile()
+  const t    = getT(lang)
+  const cats = getCategories(lang)
+  const supabase = createClient()
+
+  const [goals, setGoals]       = useState<Goal[]>([])
+  const [loading, setLoading]   = useState(true)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [showForm, setShowForm] = useState(false)
-  const [newTitle, setNewTitle] = useState('')
-  const [newCategory, setNewCategory] = useState<Category>('assessment')
+  const [newTitle, setNewTitle]         = useState('')
+  const [newCategory, setNewCategory]   = useState<Category>('assessment')
   const [newMilestones, setNewMilestones] = useState([''])
-  const [mounted, setMounted] = useState(false)
 
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY)
-      if (stored) setGoals(JSON.parse(stored))
-    } catch {}
-    setMounted(true)
-  }, [])
+  const loadGoals = useCallback(async () => {
+    if (!user) return
+    setLoading(true)
+    const { data } = await supabase
+      .from('goals')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: true })
+    setGoals((data ?? []).map(dbToGoal))
+    setLoading(false)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user])
 
-  const persist = (updated: Goal[]) => {
-    setGoals(updated)
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(updated)) } catch {}
+  useEffect(() => { loadGoals() }, [loadGoals])
+
+  const persistMilestones = async (goalId: string, milestones: Milestone[]) => {
+    setGoals(prev => prev.map(g => g.id === goalId ? { ...g, milestones } : g))
+    await supabase.from('goals').update({ milestones }).eq('id', goalId)
   }
 
   const toggleMilestone = (goalId: string, msId: string) => {
-    persist(goals.map(g => g.id !== goalId ? g : {
-      ...g,
-      milestones: g.milestones.map(m => m.id !== msId ? m : {
-        ...m, completed: !m.completed,
-        completedAt: !m.completed ? new Date().toLocaleDateString() : undefined,
-      }),
-    }))
+    const goal = goals.find(g => g.id === goalId)
+    if (!goal) return
+    const updated = goal.milestones.map(m => m.id !== msId ? m : {
+      ...m, completed: !m.completed,
+      completedAt: !m.completed ? new Date().toLocaleDateString() : undefined,
+    })
+    persistMilestones(goalId, updated)
   }
 
-  const deleteGoal = (id: string) => persist(goals.filter(g => g.id !== id))
+  const deleteGoal = async (id: string) => {
+    setGoals(prev => prev.filter(g => g.id !== id))
+    await supabase.from('goals').delete().eq('id', id)
+  }
 
   const toggleExpand = (id: string) => {
     const next = new Set(expanded)
@@ -82,27 +105,46 @@ export default function ProgressPage() {
     setExpanded(next)
   }
 
-  const saveGoal = () => {
+  const saveGoal = async () => {
+    if (!newTitle.trim() || !user) return
     const milestones = newMilestones
-      .map(t => t.trim()).filter(Boolean)
+      .map(s => s.trim()).filter(Boolean)
       .map(text => ({ id: uid(), text, completed: false }))
-    if (!newTitle.trim()) return
-    const goal: Goal = {
-      id: uid(), title: newTitle.trim(),
-      category: newCategory, milestones,
-      createdAt: new Date().toLocaleDateString(),
+
+    const { data: inserted } = await supabase
+      .from('goals')
+      .insert({
+        user_id:    user.id,
+        title:      newTitle.trim(),
+        category:   newCategory,
+        milestones,
+      })
+      .select()
+      .single()
+
+    if (inserted) {
+      const goal = dbToGoal(inserted)
+      setGoals(prev => [...prev, goal])
+      setExpanded(prev => new Set([...prev, goal.id]))
     }
-    persist([...goals, goal])
-    setExpanded(prev => new Set([...prev, goal.id]))
+
     setShowForm(false)
-    setNewTitle(''); setNewCategory('assessment'); setNewMilestones([''])
+    setNewTitle('')
+    setNewCategory('assessment')
+    setNewMilestones([''])
   }
 
-  const totalMilestones    = goals.reduce((s, g) => s + g.milestones.length, 0)
+  const totalMilestones     = goals.reduce((s, g) => s + g.milestones.length, 0)
   const completedMilestones = goals.reduce((s, g) => s + g.milestones.filter(m => m.completed).length, 0)
   const overallPct = totalMilestones > 0 ? Math.round((completedMilestones / totalMilestones) * 100) : 0
 
-  if (!mounted) return null
+  if (loading) {
+    return (
+      <div className="flex justify-center py-24">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -150,25 +192,16 @@ export default function ProgressPage() {
               <X className="w-4 h-4 text-muted-foreground" />
             </button>
           </div>
-
           <div className="space-y-4">
             <div className="space-y-1.5">
               <Label className="text-sm font-medium">{t('progress.goalTitle')} *</Label>
-              <Input
-                placeholder={t('progress.goalTitlePlaceholder')}
-                value={newTitle}
-                onChange={e => setNewTitle(e.target.value)}
-                className="rounded-xl"
-                autoFocus
-              />
+              <Input placeholder={t('progress.goalTitlePlaceholder')} value={newTitle}
+                onChange={e => setNewTitle(e.target.value)} className="rounded-xl" autoFocus />
             </div>
-
             <div className="space-y-1.5">
               <Label className="text-sm font-medium">{t('progress.category')}</Label>
               <Select value={newCategory} onValueChange={v => setNewCategory(v as Category)}>
-                <SelectTrigger className="rounded-xl">
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {(Object.entries(cats) as [Category, string][]).map(([k, v]) => (
                     <SelectItem key={k} value={k}>{v}</SelectItem>
@@ -176,37 +209,26 @@ export default function ProgressPage() {
                 </SelectContent>
               </Select>
             </div>
-
             <div className="space-y-2">
               <Label className="text-sm font-medium">{t('progress.milestone')}</Label>
               {newMilestones.map((ms, i) => (
                 <div key={i} className="flex gap-2">
-                  <Input
-                    placeholder={t('progress.milestonePlaceholder')}
-                    value={ms}
-                    onChange={e => {
-                      const next = [...newMilestones]; next[i] = e.target.value; setNewMilestones(next)
-                    }}
-                    className="rounded-xl flex-1"
-                  />
+                  <Input placeholder={t('progress.milestonePlaceholder')} value={ms}
+                    onChange={e => { const next = [...newMilestones]; next[i] = e.target.value; setNewMilestones(next) }}
+                    className="rounded-xl flex-1" />
                   {newMilestones.length > 1 && (
-                    <button
-                      onClick={() => setNewMilestones(newMilestones.filter((_, j) => j !== i))}
-                      className="p-2 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-                    >
+                    <button onClick={() => setNewMilestones(newMilestones.filter((_, j) => j !== i))}
+                      className="p-2 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors">
                       <X className="w-4 h-4" />
                     </button>
                   )}
                 </div>
               ))}
-              <button
-                onClick={() => setNewMilestones([...newMilestones, ''])}
-                className="text-sm text-primary hover:text-primary/80 font-medium flex items-center gap-1.5 transition-colors"
-              >
+              <button onClick={() => setNewMilestones([...newMilestones, ''])}
+                className="text-sm text-primary hover:text-primary/80 font-medium flex items-center gap-1.5 transition-colors">
                 <Plus className="w-3.5 h-3.5" /> {t('progress.addMilestone')}
               </button>
             </div>
-
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setShowForm(false)} className="flex-1 rounded-xl">
                 {t('progress.cancel')}
@@ -232,18 +254,15 @@ export default function ProgressPage() {
       ) : (
         <div className="space-y-3">
           {goals.map(goal => {
-            const done = goal.milestones.filter(m => m.completed).length
+            const done  = goal.milestones.filter(m => m.completed).length
             const total = goal.milestones.length
             const pct   = total > 0 ? Math.round((done / total) * 100) : 0
             const open  = expanded.has(goal.id)
 
             return (
               <div key={goal.id} className="glass rounded-2xl overflow-hidden">
-                {/* Goal header */}
-                <div
-                  className="flex items-center gap-3 p-5 cursor-pointer hover:bg-muted/20 transition-colors"
-                  onClick={() => toggleExpand(goal.id)}
-                >
+                <div className="flex items-center gap-3 p-5 cursor-pointer hover:bg-muted/20 transition-colors"
+                  onClick={() => toggleExpand(goal.id)}>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1.5">
                       <span className={`text-xs px-2.5 py-0.5 rounded-full border font-medium ${CATEGORY_COLORS[goal.category]}`}>
@@ -258,30 +277,23 @@ export default function ProgressPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                    <button
-                      onClick={e => { e.stopPropagation(); deleteGoal(goal.id) }}
+                    <button onClick={e => { e.stopPropagation(); deleteGoal(goal.id) }}
                       className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"
-                      title={t('progress.delete')}
-                    >
+                      title={t('progress.delete')}>
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                     {open ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
                   </div>
                 </div>
 
-                {/* Milestones */}
                 {open && goal.milestones.length > 0 && (
                   <div className="border-t border-border/40 px-5 pb-4 pt-3 space-y-2">
                     {goal.milestones.map(ms => (
-                      <div
-                        key={ms.id}
-                        className="flex items-center gap-3 group cursor-pointer"
-                        onClick={() => toggleMilestone(goal.id, ms.id)}
-                      >
+                      <div key={ms.id} className="flex items-center gap-3 group cursor-pointer"
+                        onClick={() => toggleMilestone(goal.id, ms.id)}>
                         {ms.completed
-                          ? <CheckCircle2 className="w-4.5 h-4.5 text-primary shrink-0" />
-                          : <Circle className="w-4.5 h-4.5 text-muted-foreground/40 group-hover:text-primary/60 shrink-0 transition-colors" />
-                        }
+                          ? <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+                          : <Circle className="w-4 h-4 text-muted-foreground/40 group-hover:text-primary/60 shrink-0 transition-colors" />}
                         <span className={`text-sm flex-1 transition-colors ${ms.completed ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
                           {ms.text}
                         </span>
