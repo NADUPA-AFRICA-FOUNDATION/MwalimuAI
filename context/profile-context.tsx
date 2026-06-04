@@ -97,7 +97,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
               .from('profiles')
               .select('*')
               .eq('id', nextUser.id)
-              .single()
+              .maybeSingle()
 
             if (data) {
               const p = dbToProfile(data as Record<string, unknown>)

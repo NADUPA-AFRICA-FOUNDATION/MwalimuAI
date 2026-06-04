@@ -147,3 +147,80 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW
   EXECUTE FUNCTION public.handle_new_user();
+
+
+-- ── 7. ai_conversations ───────────────────────────────────────
+-- AI Coach conversation threads. Managed by /dashboard/ai-coach.
+CREATE TABLE IF NOT EXISTS public.ai_conversations (
+  id         UUID    PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id    UUID    NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  title      TEXT    NOT NULL DEFAULT 'New conversation',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.ai_conversations ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "ai_conv_select_own" ON public.ai_conversations;
+DROP POLICY IF EXISTS "ai_conv_insert_own" ON public.ai_conversations;
+DROP POLICY IF EXISTS "ai_conv_update_own" ON public.ai_conversations;
+DROP POLICY IF EXISTS "ai_conv_delete_own" ON public.ai_conversations;
+
+CREATE POLICY "ai_conv_select_own" ON public.ai_conversations
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "ai_conv_insert_own" ON public.ai_conversations
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "ai_conv_update_own" ON public.ai_conversations
+  FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "ai_conv_delete_own" ON public.ai_conversations
+  FOR DELETE USING (auth.uid() = user_id);
+
+
+-- ── 8. ai_messages ────────────────────────────────────────────
+-- Individual messages within each AI Coach conversation.
+CREATE TABLE IF NOT EXISTS public.ai_messages (
+  id              UUID  PRIMARY KEY DEFAULT gen_random_uuid(),
+  conversation_id UUID  NOT NULL REFERENCES public.ai_conversations(id) ON DELETE CASCADE,
+  role            TEXT  NOT NULL CHECK (role IN ('user', 'assistant')),
+  content         TEXT  NOT NULL,
+  created_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.ai_messages ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "ai_msg_select_own" ON public.ai_messages;
+DROP POLICY IF EXISTS "ai_msg_insert_own" ON public.ai_messages;
+DROP POLICY IF EXISTS "ai_msg_delete_own" ON public.ai_messages;
+
+CREATE POLICY "ai_msg_select_own" ON public.ai_messages
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM public.ai_conversations
+      WHERE id = conversation_id AND user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "ai_msg_insert_own" ON public.ai_messages
+  FOR INSERT WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.ai_conversations
+      WHERE id = conversation_id AND user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "ai_msg_delete_own" ON public.ai_messages
+  FOR DELETE USING (
+    EXISTS (
+      SELECT 1 FROM public.ai_conversations
+      WHERE id = conversation_id AND user_id = auth.uid()
+    )
+  );
+
+
+-- ── 9. Indexes for AI chat ────────────────────────────────────
+CREATE INDEX IF NOT EXISTS idx_ai_conv_user_id    ON public.ai_conversations(user_id);
+CREATE INDEX IF NOT EXISTS idx_ai_conv_updated_at ON public.ai_conversations(updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ai_msg_conv_id     ON public.ai_messages(conversation_id);

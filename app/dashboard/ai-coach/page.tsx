@@ -232,8 +232,13 @@ function ChatPanel({
     parts: [{ type: 'text' as const, text: m.content }],
   }))
 
+  // Capture the id once at mount so it never changes mid-stream.
+  // ChatPanel already remounts (key prop) when switching conversations,
+  // so the correct id is always set at mount time.
+  const stableId = useRef(initConvId ?? 'new').current
+
   const { messages, status, error, sendMessage } = useChat({
-    id: initConvId ?? 'new',
+    id: stableId,
     messages: uiInitialMessages,
     transport: new DefaultChatTransport({
       api: '/api/chat',
