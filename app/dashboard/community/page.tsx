@@ -97,9 +97,11 @@ export default function CommunityPage() {
   const [search, setSearch]         = useState('')
   const [expanded, setExpanded]     = useState<string | null>(null)
   const [showNew, setShowNew]       = useState(false)
-  const [replyBoxes, setReplyBoxes] = useState<Record<string, string>>({})
-  const replyInputRefs              = useRef<Record<string, HTMLInputElement | null>>({})
-  const [newForm, setNewForm]       = useState({ title: '', body: '', category: '' })
+  const [replyBoxes, setReplyBoxes]   = useState<Record<string, string>>({})
+  const [replyErrors, setReplyErrors] = useState<Record<string, string>>({})
+  const replyInputRefs                = useRef<Record<string, HTMLInputElement | null>>({})
+  const [newForm, setNewForm]         = useState({ title: '', body: '', category: '' })
+  const [postError, setPostError]     = useState<string | null>(null)
 
   const authorName     = profile?.name && profile.name !== 'Teacher'
     ? profile.name
@@ -150,6 +152,8 @@ export default function CommunityPage() {
     const body = replyBoxes[postId]?.trim()
     if (!body || !userId) return
 
+    setReplyErrors(prev => ({ ...prev, [postId]: '' }))
+
     const optimistic: Reply = {
       id: `temp-${Date.now()}`, author: authorName,
       initials: authorInitials, body, timestamp: 'Just now',
@@ -159,16 +163,30 @@ export default function CommunityPage() {
     ))
     setReplyBoxes(prev => ({ ...prev, [postId]: '' }))
 
-    await supabase.from('community_comments').insert({
+    const { error } = await supabase.from('community_comments').insert({
       post_id: postId, user_id: userId, author_name: authorName, body,
     })
+
+    if (error) {
+      // Revert optimistic update
+      setPosts(prev => prev.map(p =>
+        p.id === postId
+          ? { ...p, replies: p.replies.filter(r => !r.id.startsWith('temp-')) }
+          : p
+      ))
+      setReplyBoxes(prev => ({ ...prev, [postId]: body }))
+      setReplyErrors(prev => ({ ...prev, [postId]: error.message }))
+      return
+    }
+
     loadPosts()
   }
 
   const submitPost = async () => {
     if (!newForm.title.trim() || !newForm.body.trim() || !newForm.category || !userId) return
+    setPostError(null)
 
-    const { data: inserted } = await supabase
+    const { data: inserted, error } = await supabase
       .from('community_posts')
       .insert({
         user_id:     userId,
@@ -181,6 +199,8 @@ export default function CommunityPage() {
       })
       .select()
       .single()
+
+    if (error) { setPostError(error.message); return }
 
     setNewForm({ title: '', body: '', category: '' })
     setShowNew(false)
@@ -254,6 +274,11 @@ export default function CommunityPage() {
               </SelectContent>
             </Select>
           </div>
+          {postError && (
+            <p className="text-sm text-destructive bg-destructive/10 rounded-xl px-3 py-2">
+              Failed to post: {postError}
+            </p>
+          )}
           <Button onClick={submitPost}
             disabled={!newForm.title.trim() || !newForm.body.trim() || !newForm.category || !userId}
             className="w-full rounded-xl font-semibold gap-2">
@@ -378,26 +403,34 @@ export default function CommunityPage() {
                       </div>
                     )}
 
-                    <div className="flex gap-2">
-                      <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-[9px] font-bold text-primary shrink-0 mt-1">
-                        {authorInitials}
+                    <div className="space-y-2">
+                      <div className="flex gap-2">
+                        <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-[9px] font-bold text-primary shrink-0 mt-1">
+                          {authorInitials}
+                        </div>
+                        <div className="flex-1 flex gap-2">
+                          <Input
+                            ref={el => { replyInputRefs.current[post.id] = el }}
+                            aria-label={`Reply to: ${post.title}`}
+                            placeholder={userId ? 'Write a reply…' : 'Sign in to reply'}
+                            value={replyBoxes[post.id] ?? ''}
+                            onChange={e => setReplyBoxes(prev => ({ ...prev, [post.id]: e.target.value }))}
+                            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitReply(post.id) } }}
+                            className="rounded-xl text-sm h-9"
+                            disabled={!userId}
+                          />
+                          <Button size="sm" onClick={() => submitReply(post.id)}
+                            disabled={!(replyBoxes[post.id]?.trim()) || !userId}
+                            className="rounded-xl px-3 h-9 shrink-0">
+                            <Send className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex-1 flex gap-2">
-                        <Input
-                          ref={el => { replyInputRefs.current[post.id] = el }}
-                          aria-label={`Reply to: ${post.title}`}
-                          placeholder="Write a reply…"
-                          value={replyBoxes[post.id] ?? ''}
-                          onChange={e => setReplyBoxes(prev => ({ ...prev, [post.id]: e.target.value }))}
-                          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitReply(post.id) } }}
-                          className="rounded-xl text-sm h-9"
-                        />
-                        <Button size="sm" onClick={() => submitReply(post.id)}
-                          disabled={!(replyBoxes[post.id]?.trim()) || !userId}
-                          className="rounded-xl px-3 h-9 shrink-0">
-                          <Send className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
+                      {replyErrors[post.id] && (
+                        <p className="text-xs text-destructive pl-9">
+                          Reply failed: {replyErrors[post.id]}
+                        </p>
+                      )}
                     </div>
                   </div>
                 )}

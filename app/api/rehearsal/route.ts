@@ -30,6 +30,9 @@ async function isOllamaAvailable(): Promise<boolean> {
   } catch { return false }
 }
 
+// Truncate lesson plan to keep system prompt lean — the simulation only needs the topic/gist
+const MAX_LESSON_PLAN_CHARS = 600
+
 function buildSystem(lessonPlan: string, grade: string, lang?: string) {
   const langInstruction = lang === 'sw'
     ? `LUGHA: Jibu KWA KISWAHILI pekee — majibu yote ya darasa, maswali ya wanafunzi, na maoni lazima yaandikwe kwa Kiswahili. Mwalimu ataweza kujibu pia kwa Kiswahili. Tumia lugha ya kawaida ya watoto wa shule za Kenya — mchanganyiko wa Kiswahili sanifu na misemo ya kila siku darasani. Usirudi Kiingereza isipokuwa kwa majina ya vitu halisi (jina la darasa, nambari, n.k.).
@@ -37,11 +40,15 @@ function buildSystem(lessonPlan: string, grade: string, lang?: string) {
 `
     : ''
 
+  const planSnippet = lessonPlan.length > MAX_LESSON_PLAN_CHARS
+    ? lessonPlan.slice(0, MAX_LESSON_PLAN_CHARS) + '...'
+    : lessonPlan
+
   return `${langInstruction}You are simulating a lively class of ${grade} learners in a Kenyan CBC classroom.
 
 The teacher has shared this lesson plan:
 ---
-${lessonPlan}
+${planSnippet}
 ---
 
 Your role:
@@ -67,8 +74,9 @@ export async function POST(req: Request) {
     lang?:      string
   }
 
-  // Convert from UIMessage format (sent by useChat) to ModelMessage format for streamText
-  const converted = await convertToModelMessages(messages as Parameters<typeof convertToModelMessages>[0])
+  // Cap history to last 10 messages to prevent unbounded token growth
+  const recentMessages = (messages as unknown[]).slice(-10)
+  const converted = await convertToModelMessages(recentMessages as Parameters<typeof convertToModelMessages>[0])
   const system    = buildSystem(lessonPlan ?? '', grade ?? 'Grade 4', lang)
 
   const canUseGroq = process.env.GROQ_API_KEY && !groqOnCooldown()

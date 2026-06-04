@@ -99,7 +99,9 @@ export async function POST(req: Request) {
   if (authError) return authError
 
   const { messages, lang, profile, currentLesson } = await req.json()
-  const converted = await convertToModelMessages(messages)
+  // Cap history to last 12 messages to prevent unbounded token growth in long sessions
+  const recentMessages = Array.isArray(messages) ? messages.slice(-12) : messages
+  const converted = await convertToModelMessages(recentMessages)
   const system = buildSystemPrompt(lang, profile, currentLesson)
 
   const canUseGroq = process.env.GROQ_API_KEY && !groqOnCooldown()
