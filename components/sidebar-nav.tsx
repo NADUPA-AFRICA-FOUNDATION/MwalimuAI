@@ -100,12 +100,12 @@ export function SidebarNav({
 
             const linkCls = cn(
               'flex items-center gap-3 rounded-xl text-sm font-medium h-9',
-              'transition-all duration-150',
+              'transition-all duration-200 ease-[cubic-bezier(0.32,0.72,0,1)]',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
               isCollapsed ? 'justify-center px-0 w-9 mx-auto' : 'px-3',
               isActive
-                ? 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold shadow-sm'
-                : 'text-muted-foreground hover:text-foreground hover:bg-muted/60 active:bg-muted/80',
+                ? 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold shadow-sm ring-1 ring-sidebar-accent/30'
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted/60 active:scale-[0.97] active:bg-muted/80',
             )
 
             if (isCollapsed) {

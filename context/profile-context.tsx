@@ -3,16 +3,9 @@
 import {
   createContext, useContext, useState, useEffect, useCallback, type ReactNode,
 } from 'react'
-import {
-  type User,
-  onAuthStateChanged,
-  signOut as fbSignOut,
-} from 'firebase/auth'
-import {
-  doc, getDoc, setDoc, serverTimestamp,
-} from 'firebase/firestore'
-import { auth, db } from '@/lib/firebase'
-import { syncActivityFromFirestore } from '@/lib/streak'
+import { type User } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase/client'
+import { syncActivityFromSupabase } from '@/lib/streak'
 import { type Lang } from '@/lib/i18n'
 
 export interface TeacherProfile {
@@ -26,19 +19,16 @@ export interface TeacherProfile {
 }
 
 interface ProfileContextType {
-  // auth
-  user:        User | null
-  authLoading: boolean
-  signOut:     () => Promise<void>
-  // profile
-  profile:     TeacherProfile | null
-  setProfile:  (p: TeacherProfile) => Promise<void>
+  user:         User | null
+  authLoading:  boolean
+  signOut:      () => Promise<void>
+  profile:      TeacherProfile | null
+  setProfile:   (p: TeacherProfile) => Promise<void>
   clearProfile: () => void
-  mounted:     boolean
-  // language
-  lang:        Lang
-  setLang:     (l: Lang) => void
-  toggleLang:  () => void
+  mounted:      boolean
+  lang:         Lang
+  setLang:      (l: Lang) => void
+  toggleLang:   () => void
 }
 
 const ProfileContext = createContext<ProfileContextType>({
@@ -48,13 +38,11 @@ const ProfileContext = createContext<ProfileContextType>({
   lang: 'en', setLang: () => {}, toggleLang: () => {},
 })
 
-const PROFILE_KEY  = 'mwalimu_profile'
-const LANG_KEY     = 'mwalimu_lang'
-const LAST_UID_KEY = 'mwalimu_last_uid'
+const PROFILE_KEY = 'mwalimu_profile'
+const LANG_KEY    = 'mwalimu_lang'
 
-// All localStorage keys that belong to a single user session
 const ALL_USER_KEYS = [
-  PROFILE_KEY, LANG_KEY, LAST_UID_KEY,
+  PROFILE_KEY, LANG_KEY,
   'mwalimu_community', 'mwalimu_learning_progress', 'mwalimu_activity',
   'mwalimu_tools_used', 'mwalimu_journal', 'mwalimu_goals',
   'mwalimu_discussions', 'mwalimu_current_lesson',
@@ -65,75 +53,78 @@ function clearLocalUserData() {
   ALL_USER_KEYS.forEach(key => { try { localStorage.removeItem(key) } catch {} })
 }
 
+// Map Supabase snake_case columns → TeacherProfile camelCase
+function dbToProfile(row: Record<string, unknown>): TeacherProfile {
+  return {
+    name:      (row.name      as string)  ?? '',
+    school:    (row.school    as string)  ?? '',
+    county:    (row.county    as string)  ?? '',
+    subjects:  (row.subjects  as string[]) ?? [],
+    grades:    (row.grades    as string[]) ?? [],
+    cbcLevel:  ((row.cbc_level as string) ?? 'beginner') as TeacherProfile['cbcLevel'],
+    completed: (row.completed as boolean) ?? false,
+  }
+}
+
 export function ProfileProvider({ children }: { children: ReactNode }) {
   const [user, setUser]               = useState<User | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [profile, setProfileState]    = useState<TeacherProfile | null>(null)
   const [lang, setLangState]          = useState<Lang>('en')
   const [mounted, setMounted]         = useState(false)
+  const supabase = createClient()
 
-  // Listen to Firebase auth state — single source of truth
   useEffect(() => {
-    if (!auth) {
-      setAuthLoading(false)
-      setMounted(true)
-      return
-    }
-
-    const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
-      setUser(firebaseUser)
-
-      if (firebaseUser) {
-        // Detect user switch — clear previous user's local data before loading new user
-        const lastUid = typeof window !== 'undefined' ? localStorage.getItem(LAST_UID_KEY) : null
-        if (lastUid && lastUid !== firebaseUser.uid) {
-          clearLocalUserData()
-        }
-        if (typeof window !== 'undefined') {
-          localStorage.setItem(LAST_UID_KEY, firebaseUser.uid)
-        }
-
-        // Try Firestore first, fall back to localStorage cache when offline
-        try {
-          const snap = await getDoc(doc(db, 'users', firebaseUser.uid))
-          if (snap.exists()) {
-            const data = snap.data() as TeacherProfile & { lang?: Lang }
-            setProfileState(data)
-            localStorage.setItem(PROFILE_KEY, JSON.stringify(data))
-            if (data.lang === 'en' || data.lang === 'sw') setLangState(data.lang)
-          } else {
-            // New user — migrate any locally stored profile (returning users upgrading)
-            const local = localStorage.getItem(PROFILE_KEY)
-            if (local) {
-              const localProfile = JSON.parse(local) as TeacherProfile
-              await setDoc(doc(db, 'users', firebaseUser.uid), {
-                ...localProfile,
-                createdAt: serverTimestamp(),
-              })
-              setProfileState(localProfile)
-            }
-          }
-        } catch {
-          // Offline — use localStorage cache
-          const local = localStorage.getItem(PROFILE_KEY)
-          if (local) setProfileState(JSON.parse(local) as TeacherProfile)
-        }
-
-        // Restore language preference
-        const storedLang = localStorage.getItem(LANG_KEY) as Lang | null
-        if (storedLang === 'en' || storedLang === 'sw') setLangState(storedLang)
-
-        // Sync streak/activity from Firestore → localStorage (runs in background)
-        syncActivityFromFirestore(firebaseUser.uid).catch(() => {})
-      } else {
-        setProfileState(null)
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null)
+      if (!session?.user) {
+        setAuthLoading(false)
+        setMounted(true)
       }
-
-      setAuthLoading(false)
-      setMounted(true)
     })
 
-    return unsub
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        const nextUser = session?.user ?? null
+        setUser(nextUser)
+
+        if (nextUser) {
+          // Load profile from Supabase, fall back to localStorage cache when offline
+          try {
+            const { data } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', nextUser.id)
+              .single()
+
+            if (data) {
+              const p = dbToProfile(data as Record<string, unknown>)
+              setProfileState(p)
+              localStorage.setItem(PROFILE_KEY, JSON.stringify(p))
+              if (data.lang === 'en' || data.lang === 'sw') setLangState(data.lang as Lang)
+            }
+          } catch {
+            const local = localStorage.getItem(PROFILE_KEY)
+            if (local) setProfileState(JSON.parse(local) as TeacherProfile)
+          }
+
+          const storedLang = localStorage.getItem(LANG_KEY) as Lang | null
+          if (storedLang === 'en' || storedLang === 'sw') setLangState(storedLang)
+
+          // Sync streak activity from Supabase → localStorage (background)
+          syncActivityFromSupabase(nextUser.id).catch(() => {})
+        } else {
+          setProfileState(null)
+        }
+
+        setAuthLoading(false)
+        setMounted(true)
+      }
+    )
+
+    return () => subscription.unsubscribe()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const setProfile = useCallback(async (p: TeacherProfile) => {
@@ -142,16 +133,23 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
 
     if (user) {
       try {
-        await setDoc(doc(db, 'users', user.uid), {
-          ...p,
+        await supabase.from('profiles').upsert({
+          id:        user.id,
+          name:      p.name,
+          school:    p.school,
+          county:    p.county,
+          subjects:  p.subjects,
+          grades:    p.grades,
+          cbc_level: p.cbcLevel,
           lang,
-          updatedAt: serverTimestamp(),
-        }, { merge: true })
+          completed: p.completed,
+          updated_at: new Date().toISOString(),
+        })
       } catch (e) {
         console.error('Failed to save profile:', e)
       }
     }
-  }, [user, lang])
+  }, [user, lang, supabase])
 
   const clearProfile = useCallback(() => {
     setProfileState(null)
@@ -163,9 +161,9 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     if (typeof window !== 'undefined') document.documentElement.lang = l === 'sw' ? 'sw' : 'en'
     try { localStorage.setItem(LANG_KEY, l) } catch {}
     if (user) {
-      setDoc(doc(db, 'users', user.uid), { lang: l }, { merge: true }).catch(() => {})
+      supabase.from('profiles').upsert({ id: user.id, lang: l, updated_at: new Date().toISOString() }).then(() => {}, () => {})
     }
-  }, [user])
+  }, [user, supabase])
 
   const toggleLang = useCallback(() => {
     setLangState(prev => {
@@ -173,18 +171,17 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       if (typeof window !== 'undefined') document.documentElement.lang = next === 'sw' ? 'sw' : 'en'
       try { localStorage.setItem(LANG_KEY, next) } catch {}
       if (user) {
-        setDoc(doc(db, 'users', user.uid), { lang: next }, { merge: true }).catch(() => {})
+        supabase.from('profiles').upsert({ id: user.id, lang: next, updated_at: new Date().toISOString() }).then(() => {}, () => {})
       }
       return next
     })
-  }, [user])
+  }, [user, supabase])
 
   const signOut = useCallback(async () => {
-    await fbSignOut(auth)
-    // Clear all user-specific local data so the next user starts fresh
+    await supabase.auth.signOut()
     clearLocalUserData()
     clearProfile()
-  }, [clearProfile])
+  }, [clearProfile, supabase])
 
   return (
     <ProfileContext.Provider value={{

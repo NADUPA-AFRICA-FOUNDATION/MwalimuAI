@@ -1,8 +1,10 @@
-import { auth } from '@/lib/firebase'
+import { createClient } from '@/lib/supabase/client'
 
-async function getIdToken(): Promise<string | null> {
+async function getAccessToken(): Promise<string | null> {
   try {
-    return (await auth?.currentUser?.getIdToken()) ?? null
+    const supabase = createClient()
+    const { data: { session } } = await supabase.auth.getSession()
+    return session?.access_token ?? null
   } catch {
     return null
   }
@@ -10,10 +12,10 @@ async function getIdToken(): Promise<string | null> {
 
 /**
  * Drop-in replacement for fetch() that automatically attaches
- * the current Firebase ID token as an Authorization header.
+ * the current Supabase access token as an Authorization header.
  */
 export async function authedFetch(url: string, init: RequestInit = {}): Promise<Response> {
-  const token = await getIdToken()
+  const token = await getAccessToken()
   return fetch(url, {
     ...init,
     headers: {
@@ -27,6 +29,6 @@ export async function authedFetch(url: string, init: RequestInit = {}): Promise<
  * Returns auth headers for use in custom fetch overrides (e.g. useChat transports).
  */
 export async function authHeaders(): Promise<Record<string, string>> {
-  const token = await getIdToken()
+  const token = await getAccessToken()
   return token ? { Authorization: `Bearer ${token}` } : {}
 }

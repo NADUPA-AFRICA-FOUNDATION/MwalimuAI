@@ -10,24 +10,13 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { Eye, EyeOff, GraduationCap, Lock, Mail } from 'lucide-react'
-import { signInWithEmailAndPassword } from 'firebase/auth'
-import { auth } from '@/lib/firebase'
+import { createClient } from '@/lib/supabase/client'
 
-function mapFirebaseError(code: string): string {
-  switch (code) {
-    case 'auth/invalid-credential':
-    case 'auth/user-not-found':
-    case 'auth/wrong-password':
-      return 'Incorrect email or password.'
-    case 'auth/invalid-email':
-      return 'Please enter a valid email address.'
-    case 'auth/too-many-requests':
-      return 'Too many attempts. Please wait a moment and try again.'
-    case 'auth/user-disabled':
-      return 'This account has been disabled. Contact support.'
-    default:
-      return 'Sign-in failed. Please try again.'
-  }
+function mapError(msg: string): string {
+  if (msg.includes('Invalid login credentials')) return 'Incorrect email or password.'
+  if (msg.includes('Email not confirmed'))       return 'Please verify your email before signing in.'
+  if (msg.includes('too many requests'))         return 'Too many attempts. Please wait a moment and try again.'
+  return 'Sign-in failed. Please try again.'
 }
 
 export default function Page() {
@@ -43,15 +32,19 @@ export default function Page() {
     setError(null)
     setIsLoading(true)
     try {
-      const { user } = await signInWithEmailAndPassword(auth, email.trim(), password)
-      if (!user.emailVerified) {
+      const supabase = createClient()
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      })
+      if (authError) { setError(mapError(authError.message)); return }
+      if (!data.user?.email_confirmed_at) {
         router.push('/auth/sign-up-success')
         return
       }
       router.push('/dashboard')
-    } catch (err: unknown) {
-      const code = (err as { code?: string }).code ?? ''
-      setError(mapFirebaseError(code))
+    } catch {
+      setError('Sign-in failed. Please try again.')
     } finally {
       setIsLoading(false)
     }
@@ -60,9 +53,9 @@ export default function Page() {
   return (
     <div className="relative flex min-h-svh w-full items-center justify-center overflow-hidden p-6 md:p-10">
       <div className="absolute inset-0 -z-10">
-        <div className="absolute -top-24 -left-24 h-80 w-80 rounded-full bg-primary/15 blur-3xl" />
-        <div className="absolute top-1/3 -right-24 h-96 w-96 rounded-full bg-accent/15 blur-3xl" />
-        <div className="absolute -bottom-32 left-1/4 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
+        <div className="absolute -top-24 -left-24 h-80 w-80 rounded-full" style={{ background: 'radial-gradient(circle, oklch(0.52 0.20 160 / 0.15) 0%, transparent 70%)' }} />
+        <div className="absolute top-1/3 -right-24 h-96 w-96 rounded-full" style={{ background: 'radial-gradient(circle, oklch(0.70 0.20 55 / 0.12) 0%, transparent 70%)' }} />
+        <div className="absolute -bottom-32 left-1/4 h-72 w-72 rounded-full" style={{ background: 'radial-gradient(circle, oklch(0.52 0.20 160 / 0.10) 0%, transparent 70%)' }} />
       </div>
 
       <div className="w-full max-w-md">
@@ -76,7 +69,7 @@ export default function Page() {
             <span className="text-xl font-bold tracking-tight">Mwalimu AI</span>
           </Link>
 
-          <Card className="border-border/60 shadow-xl shadow-primary/5 backdrop-blur-sm">
+          <Card className="border-border/60 shadow-xl shadow-primary/5">
             <CardHeader className="space-y-2 text-center">
               <CardTitle className="text-2xl font-bold tracking-tight">Welcome back</CardTitle>
               <CardDescription>Sign in to continue your CBC mastery journey</CardDescription>
@@ -84,23 +77,13 @@ export default function Page() {
             <CardContent>
               <form onSubmit={handleLogin} noValidate>
                 <div className="flex flex-col gap-5">
-
                   <div className="grid gap-2">
                     <Label htmlFor="email">Email</Label>
                     <div className="relative">
                       <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-                      <Input
-                        id="email"
-                        type="email"
-                        inputMode="email"
-                        autoComplete="email"
-                        spellCheck={false}
-                        placeholder="you@example.com"
-                        required
-                        className="pl-9"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                      />
+                      <Input id="email" type="email" inputMode="email" autoComplete="email" spellCheck={false}
+                        placeholder="you@example.com" required className="pl-9"
+                        value={email} onChange={(e) => setEmail(e.target.value)} />
                     </div>
                   </div>
 
@@ -108,25 +91,12 @@ export default function Page() {
                     <Label htmlFor="password">Password</Label>
                     <div className="relative">
                       <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-                      <Input
-                        id="password"
-                        type={showPassword ? 'text' : 'password'}
-                        autoComplete="current-password"
-                        required
-                        className="pl-9 pr-10"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword((v) => !v)}
-                        aria-label={showPassword ? 'Hide password' : 'Show password'}
-                        aria-pressed={showPassword}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                      >
-                        {showPassword
-                          ? <EyeOff className="h-4 w-4" aria-hidden="true" />
-                          : <Eye   className="h-4 w-4" aria-hidden="true" />}
+                      <Input id="password" type={showPassword ? 'text' : 'password'} autoComplete="current-password"
+                        required className="pl-9 pr-10" value={password} onChange={(e) => setPassword(e.target.value)} />
+                      <button type="button" onClick={() => setShowPassword(v => !v)}
+                        aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+                        {showPassword ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
                       </button>
                     </div>
                   </div>
@@ -138,10 +108,7 @@ export default function Page() {
                   )}
 
                   <div className="flex justify-end -mt-1">
-                    <Link
-                      href="/auth/forgot-password"
-                      className="text-xs text-primary underline-offset-4 hover:underline"
-                    >
+                    <Link href="/auth/forgot-password" className="text-xs text-primary underline-offset-4 hover:underline">
                       Forgot password?
                     </Link>
                   </div>
@@ -153,9 +120,7 @@ export default function Page() {
 
                 <div className="mt-6 text-center text-sm text-muted-foreground">
                   Don&apos;t have an account?{' '}
-                  <Link href="/auth/sign-up" className="font-medium text-primary underline-offset-4 hover:underline">
-                    Sign up
-                  </Link>
+                  <Link href="/auth/sign-up" className="font-medium text-primary underline-offset-4 hover:underline">Sign up</Link>
                 </div>
               </form>
             </CardContent>

@@ -30,7 +30,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   useEffect(() => {
     if (authLoading) return
     if (!user) { router.push('/auth/login'); return }
-    if (!user.emailVerified) { router.push('/auth/sign-up-success'); return }
+    if (!user.email_confirmed_at) { router.push('/auth/sign-up-success'); return }
     if (mounted && !profile?.completed) router.push('/onboarding')
   }, [authLoading, user, mounted, profile, router])
 

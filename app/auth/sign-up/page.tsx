@@ -10,57 +10,46 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { Eye, EyeOff, GraduationCap } from 'lucide-react'
-import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth'
-import { auth } from '@/lib/firebase'
+import { createClient } from '@/lib/supabase/client'
 
-function mapFirebaseError(code: string): string {
-  switch (code) {
-    case 'auth/email-already-in-use':
-      return 'An account with this email already exists. Try signing in instead.'
-    case 'auth/invalid-email':
-      return 'Please enter a valid email address.'
-    case 'auth/weak-password':
-      return 'Password must be at least 6 characters.'
-    default:
-      return 'Sign-up failed. Please try again.'
-  }
+function mapError(msg: string): string {
+  if (msg.includes('already registered') || msg.includes('already been registered'))
+    return 'An account with this email already exists. Try signing in instead.'
+  if (msg.includes('valid email')) return 'Please enter a valid email address.'
+  if (msg.includes('least 6'))    return 'Password must be at least 6 characters.'
+  return 'Sign-up failed. Please try again.'
 }
 
 export default function Page() {
-  const [email, setEmail]                     = useState('')
-  const [password, setPassword]               = useState('')
-  const [repeatPassword, setRepeatPassword]   = useState('')
-  const [showPassword, setShowPassword]       = useState(false)
-  const [error, setError]                     = useState<string | null>(null)
-  const [isLoading, setIsLoading]             = useState(false)
+  const [email, setEmail]                   = useState('')
+  const [password, setPassword]             = useState('')
+  const [repeatPassword, setRepeatPassword] = useState('')
+  const [showPassword, setShowPassword]     = useState(false)
+  const [error, setError]                   = useState<string | null>(null)
+  const [isLoading, setIsLoading]           = useState(false)
   const router = useRouter()
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
 
-    if (password !== repeatPassword) {
-      setError('Passwords do not match.')
-      return
-    }
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters.')
-      return
-    }
+    if (password !== repeatPassword) { setError('Passwords do not match.'); return }
+    if (password.length < 6)         { setError('Password must be at least 6 characters.'); return }
 
     setIsLoading(true)
     try {
-      const { user } = await createUserWithEmailAndPassword(auth, email.trim(), password)
-      await sendEmailVerification(user, {
-        // After clicking the link, redirect back to the app (not Firebase's domain).
-        // This URL must be in Firebase Console → Authentication → Settings → Authorized domains.
-        url: `${window.location.origin}/auth/login`,
-        handleCodeInApp: false,
+      const supabase = createClient()
+      const { error: authError } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/login`,
+        },
       })
+      if (authError) { setError(mapError(authError.message)); return }
       router.push('/auth/sign-up-success')
-    } catch (err: unknown) {
-      const code = (err as { code?: string }).code ?? ''
-      setError(mapFirebaseError(code))
+    } catch {
+      setError('Sign-up failed. Please try again.')
     } finally {
       setIsLoading(false)
     }
@@ -69,9 +58,9 @@ export default function Page() {
   return (
     <div className="relative flex min-h-svh w-full items-center justify-center overflow-hidden p-6 md:p-10">
       <div className="absolute inset-0 -z-10">
-        <div className="absolute -top-24 -left-24 h-80 w-80 rounded-full bg-primary/15 blur-3xl" />
-        <div className="absolute top-1/3 -right-24 h-96 w-96 rounded-full bg-accent/15 blur-3xl" />
-        <div className="absolute -bottom-32 left-1/4 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
+        <div className="absolute -top-24 -left-24 h-80 w-80 rounded-full" style={{ background: 'radial-gradient(circle, oklch(0.52 0.20 160 / 0.15) 0%, transparent 70%)' }} />
+        <div className="absolute top-1/3 -right-24 h-96 w-96 rounded-full" style={{ background: 'radial-gradient(circle, oklch(0.70 0.20 55 / 0.12) 0%, transparent 70%)' }} />
+        <div className="absolute -bottom-32 left-1/4 h-72 w-72 rounded-full" style={{ background: 'radial-gradient(circle, oklch(0.52 0.20 160 / 0.10) 0%, transparent 70%)' }} />
       </div>
       <div className="w-full max-w-md">
         <div className="flex flex-col gap-6">
@@ -92,44 +81,21 @@ export default function Page() {
             <CardContent>
               <form onSubmit={handleSignUp} noValidate>
                 <div className="flex flex-col gap-5">
-
                   <div className="grid gap-2">
                     <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      inputMode="email"
-                      autoComplete="email"
-                      spellCheck={false}
-                      placeholder="you@school.ac.ke"
-                      required
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                    />
+                    <Input id="email" type="email" inputMode="email" autoComplete="email" spellCheck={false}
+                      placeholder="you@school.ac.ke" required value={email} onChange={(e) => setEmail(e.target.value)} />
                   </div>
 
                   <div className="grid gap-2">
                     <Label htmlFor="password">Password</Label>
                     <div className="relative">
-                      <Input
-                        id="password"
-                        type={showPassword ? 'text' : 'password'}
-                        autoComplete="new-password"
-                        required
-                        className="pr-10"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(v => !v)}
-                        aria-label={showPassword ? 'Hide password' : 'Show password'}
-                        aria-pressed={showPassword}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                      >
-                        {showPassword
-                          ? <EyeOff className="h-4 w-4" aria-hidden="true" />
-                          : <Eye    className="h-4 w-4" aria-hidden="true" />}
+                      <Input id="password" type={showPassword ? 'text' : 'password'} autoComplete="new-password"
+                        required className="pr-10" value={password} onChange={(e) => setPassword(e.target.value)} />
+                      <button type="button" onClick={() => setShowPassword(v => !v)}
+                        aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+                        {showPassword ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
                       </button>
                     </div>
                     <p className="text-xs text-muted-foreground">Minimum 6 characters</p>
@@ -137,14 +103,8 @@ export default function Page() {
 
                   <div className="grid gap-2">
                     <Label htmlFor="repeat-password">Confirm Password</Label>
-                    <Input
-                      id="repeat-password"
-                      type={showPassword ? 'text' : 'password'}
-                      autoComplete="new-password"
-                      required
-                      value={repeatPassword}
-                      onChange={(e) => setRepeatPassword(e.target.value)}
-                    />
+                    <Input id="repeat-password" type={showPassword ? 'text' : 'password'} autoComplete="new-password"
+                      required value={repeatPassword} onChange={(e) => setRepeatPassword(e.target.value)} />
                   </div>
 
                   {error && (
@@ -160,9 +120,7 @@ export default function Page() {
 
                 <div className="mt-4 text-center text-sm text-muted-foreground">
                   Already have an account?{' '}
-                  <Link href="/auth/login" className="font-medium text-primary underline underline-offset-4">
-                    Sign in
-                  </Link>
+                  <Link href="/auth/login" className="font-medium text-primary underline underline-offset-4">Sign in</Link>
                 </div>
               </form>
             </CardContent>

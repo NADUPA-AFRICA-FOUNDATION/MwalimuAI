@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { sendEmailVerification, reload } from 'firebase/auth'
-import { auth } from '@/lib/firebase'
+import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
@@ -18,25 +17,24 @@ export default function Page() {
   const [resendError, setResendError] = useState<string | null>(null)
 
   useEffect(() => {
-    const user = auth?.currentUser
-    if (user) {
-      setUserEmail(user.email)
-    }
+    const supabase = createClient()
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) setUserEmail(session.user.email ?? null)
+    })
   }, [])
 
   const handleResend = async () => {
     setResendError(null)
-    const user = auth?.currentUser
-    if (!user) {
-      setResendError('Session expired. Please sign in again.')
-      return
-    }
+    if (!userEmail) { setResendError('Session expired. Please sign in again.'); return }
     setResendState('sending')
     try {
-      await sendEmailVerification(user, {
-        url: `${window.location.origin}/auth/login`,
-        handleCodeInApp: false,
+      const supabase = createClient()
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: userEmail,
+        options: { emailRedirectTo: `${window.location.origin}/auth/login` },
       })
+      if (error) throw error
       setResendState('sent')
     } catch {
       setResendState('idle')
@@ -45,17 +43,11 @@ export default function Page() {
   }
 
   const handleCheckVerified = async () => {
-    const user = auth?.currentUser
-    if (!user) {
-      router.push('/auth/login')
-      return
-    }
     setCheckState('checking')
     try {
-      await reload(user)
-      if (auth?.currentUser?.emailVerified) {
-        // Hard navigation so the profile context re-initialises with the
-        // updated emailVerified flag from a fresh onAuthStateChanged event.
+      const supabase = createClient()
+      const { data } = await supabase.auth.refreshSession()
+      if (data.user?.email_confirmed_at) {
         window.location.href = '/dashboard'
       } else {
         setCheckState('unverified')
@@ -69,14 +61,13 @@ export default function Page() {
   return (
     <div className="relative flex min-h-svh w-full items-center justify-center overflow-hidden p-6 md:p-10">
       <div className="absolute inset-0 -z-10">
-        <div className="absolute -top-24 -left-24 h-80 w-80 rounded-full bg-primary/15 blur-3xl" />
-        <div className="absolute top-1/3 -right-24 h-96 w-96 rounded-full bg-accent/15 blur-3xl" />
-        <div className="absolute -bottom-32 left-1/4 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
+        <div className="absolute -top-24 -left-24 h-80 w-80 rounded-full" style={{ background: 'radial-gradient(circle, oklch(0.52 0.20 160 / 0.15) 0%, transparent 70%)' }} />
+        <div className="absolute top-1/3 -right-24 h-96 w-96 rounded-full" style={{ background: 'radial-gradient(circle, oklch(0.70 0.20 55 / 0.12) 0%, transparent 70%)' }} />
+        <div className="absolute -bottom-32 left-1/4 h-72 w-72 rounded-full" style={{ background: 'radial-gradient(circle, oklch(0.52 0.20 160 / 0.10) 0%, transparent 70%)' }} />
       </div>
 
       <div className="w-full max-w-md">
         <div className="flex flex-col gap-6">
-
           <Link href="/" className="flex items-center justify-center gap-3 self-center">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary shadow-lg shadow-primary/25">
               <GraduationCap className="h-5 w-5 text-primary-foreground" aria-hidden="true" />
@@ -127,12 +118,7 @@ export default function Page() {
                   <CheckCircle className="size-4" aria-hidden="true" /> Verification email sent
                 </p>
               ) : (
-                <Button
-                  variant="outline"
-                  onClick={handleResend}
-                  disabled={resendState === 'sending'}
-                  className="w-full gap-2"
-                >
+                <Button variant="outline" onClick={handleResend} disabled={resendState === 'sending'} className="w-full gap-2">
                   {resendState === 'sending'
                     ? <><Spinner className="size-4" /> Sending…</>
                     : <><RefreshCw className="size-4" /> Resend verification email</>}
@@ -140,9 +126,7 @@ export default function Page() {
               )}
 
               {resendError && (
-                <p role="alert" className="text-sm text-center text-destructive">
-                  {resendError}
-                </p>
+                <p role="alert" className="text-sm text-center text-destructive">{resendError}</p>
               )}
 
               <p className="text-center text-xs text-muted-foreground">

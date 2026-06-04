@@ -8,10 +8,7 @@ import { BackButton } from '@/components/back-button'
 import { useProfile } from '@/context/profile-context'
 import { recordActivity } from '@/lib/streak'
 import { PenLine, RefreshCw, ChevronDown, ChevronUp, Calendar, Flame, Sparkles, Lock, CheckCircle, Laugh, Smile, Meh, Frown, Annoyed, type LucideIcon } from 'lucide-react'
-import {
-  collection, doc, getDocs, setDoc, serverTimestamp, query, orderBy,
-} from 'firebase/firestore'
-import { db } from '@/lib/firebase'
+import { createClient } from '@/lib/supabase/client'
 
 const JOURNAL_KEY = 'mwalimu_journal'
 
@@ -108,14 +105,25 @@ export default function JournalPage() {
       } catch {}
 
       try {
-        const q = query(collection(db, 'users', user.uid, 'journal'))
-        const snap = await getDocs(q)
-        const remote = snap.docs
-          .map(d => ({ id: d.id, ...d.data() } as JournalEntry))
-          .sort((a, b) => b.date.localeCompare(a.date))
+        const supabase = createClient()
+        const { data: remote } = await supabase
+          .from('journal_entries')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
 
-        setEntries(remote)
-        localStorage.setItem(JOURNAL_KEY, JSON.stringify(remote))
+        if (remote) {
+          const mapped: JournalEntry[] = remote.map(r => ({
+            id:          r.id as string,
+            date:        (r.created_at as string).slice(0, 10),
+            displayDate: displayDate((r.created_at as string).slice(0, 10)),
+            prompt:      (r.title as string) ?? '',
+            content:     (r.content as string) ?? '',
+            mood:        (r.mood as number) ?? 3,
+          }))
+          setEntries(mapped)
+          localStorage.setItem(JOURNAL_KEY, JSON.stringify(mapped))
+        }
       } catch {
         // Offline — local cache already shown above
       } finally {
@@ -163,18 +171,18 @@ export default function JournalPage() {
     setMood(null)
     setTimeout(() => setSaved(false), 3000)
 
-    recordActivity('journal', user.uid)
+    recordActivity('journal', user.id)
 
-    // Persist to Firestore
-    try {
-      await setDoc(doc(db, 'users', user.uid, 'journal', entry.id), {
-        ...entry,
-        createdAt: serverTimestamp(),
-      })
-    } catch (e) {
-      console.error('Failed to save journal entry to Firestore:', e)
-      // Entry is still in localStorage so not lost
-    }
+    // Persist to Supabase
+    const supabase = createClient()
+    supabase.from('journal_entries').insert({
+      id:         entry.id,
+      user_id:    user.id,
+      title:      entry.prompt,
+      content:    entry.content,
+      mood:       String(entry.mood),
+      created_at: new Date(entry.date).toISOString(),
+    }).then(() => {}, () => {}) // entry is still in localStorage if this fails
   }
 
   const avgMood = entries.length

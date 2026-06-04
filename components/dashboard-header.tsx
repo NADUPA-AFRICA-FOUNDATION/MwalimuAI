@@ -57,6 +57,18 @@ export function DashboardHeader({
   const displayName = mounted && profile?.name ? profile.name : 'Teacher'
   const initials    = displayName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
 
+  const AVATAR_PALETTES = [
+    'bg-rose-500 text-white',
+    'bg-amber-500 text-white',
+    'bg-emerald-600 text-white',
+    'bg-sky-500 text-white',
+    'bg-violet-500 text-white',
+    'bg-pink-500 text-white',
+    'bg-orange-500 text-white',
+    'bg-teal-600 text-white',
+  ]
+  const avatarColor = AVATAR_PALETTES[(displayName.charCodeAt(0) || 84) % AVATAR_PALETTES.length]
+
   return (
     <header className="sticky top-0 z-40 h-[57px] border-b border-border/50 bg-background/90 backdrop-blur-md">
       <div className="flex items-center h-full px-4 gap-2">
@@ -113,8 +125,8 @@ export function DashboardHeader({
 
           {/* User avatar chip */}
           <div className="flex items-center gap-2 px-2.5 py-1.5 bg-muted/50 hover:bg-muted rounded-xl transition-colors cursor-default select-none">
-            <div className="w-6 h-6 bg-primary/15 rounded-md flex items-center justify-center shrink-0">
-              <span className="font-bold text-xs text-primary leading-none" aria-hidden="true">{initials}</span>
+            <div className={`w-6 h-6 ${avatarColor} rounded-full flex items-center justify-center shrink-0`}>
+              <span className="font-bold text-[10px] leading-none" aria-hidden="true">{initials}</span>
             </div>
             <span className="font-medium text-sm hidden md:inline truncate max-w-[120px]">{displayName}</span>
           </div>

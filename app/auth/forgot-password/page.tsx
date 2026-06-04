@@ -1,8 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { sendPasswordResetEmail } from 'firebase/auth'
-import { auth } from '@/lib/firebase'
+import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -13,7 +12,7 @@ import { GraduationCap, Mail, CheckCircle } from 'lucide-react'
 import Link from 'next/link'
 
 export default function Page() {
-  const [email, setEmail]       = useState('')
+  const [email, setEmail]         = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [sent, setSent]           = useState(false)
   const [error, setError]         = useState<string | null>(null)
@@ -23,16 +22,14 @@ export default function Page() {
     setError(null)
     setIsLoading(true)
     try {
-      await sendPasswordResetEmail(auth, email.trim())
+      const supabase = createClient()
+      await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: `${window.location.origin}/auth/reset-password`,
+      })
+      // Always show success — don't reveal whether the email exists
       setSent(true)
-    } catch (err: unknown) {
-      const code = (err as { code?: string }).code ?? ''
-      if (code === 'auth/user-not-found' || code === 'auth/invalid-email') {
-        // Don't reveal whether the email exists — just show the success state
-        setSent(true)
-      } else {
-        setError('Could not send reset email. Please try again.')
-      }
+    } catch {
+      setError('Could not send reset email. Please try again.')
     } finally {
       setIsLoading(false)
     }
@@ -41,9 +38,9 @@ export default function Page() {
   return (
     <div className="relative flex min-h-svh w-full items-center justify-center overflow-hidden p-6 md:p-10">
       <div className="absolute inset-0 -z-10">
-        <div className="absolute -top-24 -left-24 h-80 w-80 rounded-full bg-primary/15 blur-3xl" />
-        <div className="absolute top-1/3 -right-24 h-96 w-96 rounded-full bg-accent/15 blur-3xl" />
-        <div className="absolute -bottom-32 left-1/4 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
+        <div className="absolute -top-24 -left-24 h-80 w-80 rounded-full" style={{ background: 'radial-gradient(circle, oklch(0.52 0.20 160 / 0.15) 0%, transparent 70%)' }} />
+        <div className="absolute top-1/3 -right-24 h-96 w-96 rounded-full" style={{ background: 'radial-gradient(circle, oklch(0.70 0.20 55 / 0.12) 0%, transparent 70%)' }} />
+        <div className="absolute -bottom-32 left-1/4 h-72 w-72 rounded-full" style={{ background: 'radial-gradient(circle, oklch(0.52 0.20 160 / 0.10) 0%, transparent 70%)' }} />
       </div>
 
       <div className="w-full max-w-md">
@@ -66,12 +63,12 @@ export default function Page() {
                   </div>
                   <CardTitle className="text-2xl">Check your email</CardTitle>
                   <CardDescription>
-                    If an account exists for <strong className="text-foreground">{email}</strong>, you'll receive a password reset link shortly.
+                    If an account exists for <strong className="text-foreground">{email}</strong>, you&apos;ll receive a password reset link shortly.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground text-center mb-4">
-                    Check your spam folder if it doesn't arrive within a few minutes.
+                    Check your spam folder if it doesn&apos;t arrive within a few minutes.
                   </p>
                   <Link href="/auth/login">
                     <Button variant="outline" className="w-full">Back to sign in</Button>
@@ -82,7 +79,7 @@ export default function Page() {
               <>
                 <CardHeader>
                   <CardTitle className="text-2xl">Reset your password</CardTitle>
-                  <CardDescription>Enter your email and we'll send you a reset link</CardDescription>
+                  <CardDescription>Enter your email and we&apos;ll send you a reset link</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <form onSubmit={handleSubmit} noValidate>
@@ -91,18 +88,9 @@ export default function Page() {
                         <Label htmlFor="email">Email</Label>
                         <div className="relative">
                           <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-                          <Input
-                            id="email"
-                            type="email"
-                            inputMode="email"
-                            autoComplete="email"
-                            spellCheck={false}
-                            placeholder="you@example.com"
-                            required
-                            className="pl-9"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                          />
+                          <Input id="email" type="email" inputMode="email" autoComplete="email" spellCheck={false}
+                            placeholder="you@example.com" required className="pl-9"
+                            value={email} onChange={(e) => setEmail(e.target.value)} />
                         </div>
                       </div>
 
@@ -119,9 +107,7 @@ export default function Page() {
 
                     <div className="mt-4 text-center text-sm text-muted-foreground">
                       Remember your password?{' '}
-                      <Link href="/auth/login" className="font-medium text-primary underline-offset-4 hover:underline">
-                        Sign in
-                      </Link>
+                      <Link href="/auth/login" className="font-medium text-primary underline-offset-4 hover:underline">Sign in</Link>
                     </div>
                   </form>
                 </CardContent>

@@ -23,13 +23,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { getLowBandwidth, setLowBandwidth } from '@/lib/accessibility'
 import { useProfile } from '@/context/profile-context'
-import { auth } from '@/lib/firebase'
-import {
-  sendPasswordResetEmail,
-  deleteUser,
-  EmailAuthProvider,
-  reauthenticateWithCredential,
-} from 'firebase/auth'
+import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { Wifi, WifiOff, Globe, Download, KeyRound, Trash2, AlertCircle, Check } from 'lucide-react'
 
@@ -112,10 +106,13 @@ export default function SettingsPage() {
 
   const handlePasswordReset = async () => {
     const email = user?.email
-    if (!email || !auth) { toast.error('No email on file'); return }
+    if (!email) { toast.error('No email on file'); return }
     setIsResetting(true)
     try {
-      await sendPasswordResetEmail(auth, email)
+      const supabase = createClient()
+      await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/reset-password`,
+      })
       toast.success(`Password reset email sent to ${email}`)
     } catch {
       toast.error('Could not send reset email — check your connection')
@@ -156,35 +153,32 @@ export default function SettingsPage() {
   }
 
   const handleDeleteAccount = async () => {
-    if (!auth?.currentUser) return
+    if (!user?.email) return
     setDeleteError('')
     setIsDeleting(true)
-    try {
-      await deleteUser(auth.currentUser)
-      await signOut()
-    } catch (err: unknown) {
-      const code = (err as { code?: string }).code
-      if (code === 'auth/requires-recent-login') {
-        setDeleteError('requires-recent-login')
-      } else {
-        toast.error('Could not delete account — try again or contact support')
-      }
-    } finally {
-      setIsDeleting(false)
-    }
+    // Supabase requires re-authentication via password before deleting
+    setDeleteError('requires-recent-login')
+    setIsDeleting(false)
   }
 
   const handleReAuthAndDelete = async () => {
-    if (!auth?.currentUser?.email || !reAuthPassword) return
+    if (!user?.email || !reAuthPassword) return
     setIsDeleting(true)
     setDeleteError('')
     try {
-      const cred = EmailAuthProvider.credential(auth.currentUser.email, reAuthPassword)
-      await reauthenticateWithCredential(auth.currentUser, cred)
-      await deleteUser(auth.currentUser)
+      const supabase = createClient()
+      // Re-authenticate by signing in with the current password
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: reAuthPassword,
+      })
+      if (authError) { toast.error('Incorrect password — account not deleted'); setIsDeleting(false); return }
+      // Call server-side route to delete via admin client
+      const res = await fetch('/api/auth/delete-account', { method: 'POST' })
+      if (!res.ok) throw new Error('delete failed')
       await signOut()
     } catch {
-      toast.error('Incorrect password — account not deleted')
+      toast.error('Could not delete account — try again or contact support')
       setIsDeleting(false)
     }
   }
