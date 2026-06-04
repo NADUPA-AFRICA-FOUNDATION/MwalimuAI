@@ -1,16 +1,16 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
-import { BackButton } from '@/components/back-button'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { Eye, EyeOff, GraduationCap, Lock, Mail } from 'lucide-react'
+import { Eye, EyeOff, GraduationCap, ArrowLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+
+const DARK = 'oklch(0.22 0.08 163)'
 
 function mapError(msg: string): string {
   if (msg.includes('Invalid login credentials') || msg.includes('invalid_credentials'))
@@ -19,17 +19,15 @@ function mapError(msg: string): string {
     return 'Please verify your email before signing in.'
   if (msg.includes('too many requests') || msg.includes('rate limit'))
     return 'Too many attempts. Please wait a moment and try again.'
-  if (msg.includes('disabled') || msg.includes('not enabled'))
-    return 'Email sign-in is currently disabled. Please contact support.'
-  return `Sign-in failed: ${msg}`
+  return 'Sign-in failed. Please try again.'
 }
 
-export default function Page() {
-  const [email, setEmail]               = useState('')
-  const [password, setPassword]         = useState('')
+export default function LoginPage() {
+  const [email,        setEmail]        = useState('')
+  const [password,     setPassword]     = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [isLoading, setIsLoading]       = useState(false)
-  const [error, setError]               = useState<string | null>(null)
+  const [isLoading,    setIsLoading]    = useState(false)
+  const [error,        setError]        = useState<string | null>(null)
   const router = useRouter()
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -43,10 +41,7 @@ export default function Page() {
         password,
       })
       if (authError) { setError(mapError(authError.message)); return }
-      if (!data.user?.email_confirmed_at) {
-        router.push('/auth/sign-up-success')
-        return
-      }
+      if (!data.user?.email_confirmed_at) { router.push('/auth/sign-up-success'); return }
       router.push('/dashboard')
     } catch {
       setError('Sign-in failed. Please try again.')
@@ -56,87 +51,146 @@ export default function Page() {
   }
 
   return (
-    <div className="relative flex min-h-svh w-full items-center justify-center overflow-hidden p-6 md:p-10">
-      <div className="absolute inset-0 -z-10">
-        <div className="absolute -top-24 -left-24 h-80 w-80 rounded-full" style={{ background: 'radial-gradient(circle, oklch(0.52 0.20 160 / 0.15) 0%, transparent 70%)' }} />
-        <div className="absolute top-1/3 -right-24 h-96 w-96 rounded-full" style={{ background: 'radial-gradient(circle, oklch(0.70 0.20 55 / 0.12) 0%, transparent 70%)' }} />
-        <div className="absolute -bottom-32 left-1/4 h-72 w-72 rounded-full" style={{ background: 'radial-gradient(circle, oklch(0.52 0.20 160 / 0.10) 0%, transparent 70%)' }} />
-      </div>
+    <div className="flex min-h-svh w-full">
 
-      <div className="w-full max-w-md">
-        <div className="flex flex-col gap-6">
-          <BackButton fallbackHref="/" />
+      {/* ── Left panel — dark brand ─────────────────────── */}
+      <div className="hidden lg:flex lg:w-[42%] flex-col justify-between p-10 relative overflow-hidden"
+        style={{ background: DARK }}>
 
-          <Link href="/" className="flex items-center justify-center gap-3 self-center">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary shadow-lg shadow-primary/25">
-              <GraduationCap className="h-5 w-5 text-primary-foreground" aria-hidden="true" />
+        {/* Subtle radial highlight */}
+        <div className="absolute top-0 left-0 w-full h-full pointer-events-none"
+          style={{ background: 'radial-gradient(ellipse at 20% 10%, oklch(0.54 0.14 163 / 0.30) 0%, transparent 60%)' }} />
+
+        {/* Logo */}
+        <div className="relative z-10">
+          <Link href="/" className="flex items-center gap-2.5 w-fit">
+            <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center">
+              <GraduationCap className="w-4.5 h-4.5 text-white" />
             </div>
-            <span className="text-xl font-bold tracking-tight">Mwalimu AI</span>
+            <span className="font-bold text-base text-white tracking-tight">Mwalimu AI</span>
           </Link>
+        </div>
 
-          <Card className="border-border/60 shadow-xl shadow-primary/5">
-            <CardHeader className="space-y-2 text-center">
-              <CardTitle className="text-2xl font-bold tracking-tight">Welcome back</CardTitle>
-              <CardDescription>Sign in to continue your CBC mastery journey</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleLogin} noValidate>
-                <div className="flex flex-col gap-5">
-                  <div className="grid gap-2">
-                    <Label htmlFor="email">Email</Label>
-                    <div className="relative">
-                      <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-                      <Input id="email" type="email" inputMode="email" autoComplete="email" spellCheck={false}
-                        placeholder="you@example.com" required className="pl-9"
-                        value={email} onChange={(e) => setEmail(e.target.value)} />
-                    </div>
-                  </div>
-
-                  <div className="grid gap-2">
-                    <Label htmlFor="password">Password</Label>
-                    <div className="relative">
-                      <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-                      <Input id="password" type={showPassword ? 'text' : 'password'} autoComplete="current-password"
-                        required className="pl-9 pr-10" value={password} onChange={(e) => setPassword(e.target.value)} />
-                      <button type="button" onClick={() => setShowPassword(v => !v)}
-                        aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
-                        {showPassword ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  {error && (
-                    <p role="alert" className="text-sm text-destructive rounded-lg bg-destructive/10 border border-destructive/20 px-3 py-2">
-                      {error}
-                    </p>
-                  )}
-
-                  <div className="flex justify-end -mt-1">
-                    <Link href="/auth/forgot-password" className="text-xs text-primary underline-offset-4 hover:underline">
-                      Forgot password?
-                    </Link>
-                  </div>
-
-                  <Button type="submit" className="w-full shadow-lg shadow-primary/20" disabled={isLoading}>
-                    {isLoading ? <><Spinner className="mr-2 size-4" />Signing in…</> : 'Sign in'}
-                  </Button>
-                </div>
-
-                <div className="mt-6 text-center text-sm text-muted-foreground">
-                  Don&apos;t have an account?{' '}
-                  <Link href="/auth/sign-up" className="font-medium text-primary underline-offset-4 hover:underline">Sign up</Link>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-
-          <p className="text-center text-xs text-muted-foreground">
-            By signing in, you agree to our{' '}
-            <Link href="/privacy" className="underline underline-offset-4 hover:text-foreground">Privacy Policy</Link>.
+        {/* Centre copy */}
+        <div className="relative z-10">
+          <p className="text-[11px] font-bold text-white/30 uppercase tracking-widest mb-5">For Kenya&apos;s CBC teachers</p>
+          <h2 className="text-[2.4rem] font-black text-white leading-[1.1] tracking-tight mb-6">
+            Every lesson<br />counts.<br />
+            <span style={{ color: 'oklch(0.74 0.17 62)' }}>Make it great.</span>
+          </h2>
+          <p className="text-white/50 text-[15px] leading-relaxed max-w-xs">
+            Your AI coach, KICD-aligned modules, and a community of educators are waiting for you.
           </p>
         </div>
+
+        {/* Testimonial */}
+        <div className="relative z-10 rounded-2xl p-5" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}>
+          <p className="text-white/70 text-sm leading-relaxed mb-4">
+            &ldquo;In 8 weeks I went from CBC confusion to writing confident assessment rubrics for all my subjects.&rdquo;
+          </p>
+          <div className="flex items-center gap-3">
+            <img
+              src="https://images.unsplash.com/photo-1531123897727-8f129e1688ce?auto=format&fit=crop&w=40&h=40&q=80"
+              alt="Jane Muthoni"
+              className="w-9 h-9 rounded-full object-cover border-2 border-white/20"
+            />
+            <div>
+              <p className="text-white text-sm font-semibold leading-tight">Jane Muthoni</p>
+              <p className="text-white/40 text-xs mt-0.5">Grade 6 Teacher · Nairobi</p>
+            </div>
+          </div>
+        </div>
       </div>
+
+      {/* ── Right panel — form ──────────────────────────── */}
+      <div className="flex-1 flex flex-col bg-white">
+
+        {/* Top bar */}
+        <div className="flex items-center justify-between px-6 md:px-10 py-5 border-b border-gray-100">
+          <Link href="/" className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 transition-colors">
+            <ArrowLeft className="w-4 h-4" />
+            Back
+          </Link>
+          {/* Mobile logo */}
+          <Link href="/" className="flex items-center gap-2 lg:hidden">
+            <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center">
+              <GraduationCap className="w-3.5 h-3.5 text-white" />
+            </div>
+            <span className="font-bold text-sm tracking-tight">Mwalimu AI</span>
+          </Link>
+          <p className="text-sm text-gray-400">
+            No account?{' '}
+            <Link href="/auth/sign-up" className="text-primary font-semibold hover:underline underline-offset-4">
+              Sign up
+            </Link>
+          </p>
+        </div>
+
+        {/* Form area */}
+        <div className="flex-1 flex items-center justify-center px-6 md:px-10 py-12">
+          <div className="w-full max-w-[380px]">
+
+            <div className="mb-8">
+              <h1 className="text-[1.8rem] font-black tracking-tight text-gray-900 mb-2">Welcome back</h1>
+              <p className="text-gray-400 text-[15px]">Sign in to continue your CBC journey.</p>
+            </div>
+
+            <form onSubmit={handleLogin} noValidate className="space-y-5">
+
+              <div className="space-y-1.5">
+                <Label htmlFor="email" className="text-[13px] font-semibold text-gray-700">Email address</Label>
+                <Input
+                  id="email" type="email" inputMode="email" autoComplete="email" spellCheck={false}
+                  placeholder="you@school.ac.ke" required
+                  value={email} onChange={e => setEmail(e.target.value)}
+                  className="h-11 rounded-xl border-gray-200 bg-gray-50 text-[14px] focus:border-primary focus:ring-primary/20 placeholder:text-gray-300"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password" className="text-[13px] font-semibold text-gray-700">Password</Label>
+                  <Link href="/auth/forgot-password" className="text-[12px] text-primary hover:underline underline-offset-4">
+                    Forgot password?
+                  </Link>
+                </div>
+                <div className="relative">
+                  <Input
+                    id="password" type={showPassword ? 'text' : 'password'} autoComplete="current-password" required
+                    value={password} onChange={e => setPassword(e.target.value)}
+                    className="h-11 rounded-xl border-gray-200 bg-gray-50 text-[14px] pr-10 focus:border-primary focus:ring-primary/20"
+                  />
+                  <button type="button" onClick={() => setShowPassword(v => !v)}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 transition-colors">
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {error && (
+                <div role="alert" className="text-[13px] text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-3">
+                  {error}
+                </div>
+              )}
+
+              <Button type="submit" disabled={isLoading}
+                className="w-full h-11 rounded-xl text-[14px] font-semibold btn-primary-glow">
+                {isLoading ? <><Spinner className="mr-2 size-4" />Signing in…</> : 'Sign in →'}
+              </Button>
+
+            </form>
+
+            <p className="text-center text-[12px] text-gray-300 mt-8">
+              By signing in you agree to our{' '}
+              <Link href="/privacy" className="text-gray-400 hover:text-gray-600 underline underline-offset-4 transition-colors">
+                Privacy Policy
+              </Link>
+            </p>
+          </div>
+        </div>
+      </div>
+
     </div>
   )
 }

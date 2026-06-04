@@ -8,9 +8,7 @@ import {
   Download, Sparkles, Wand2, TrendingUp, BookMarked, PenLine,
   ChevronLeft, ChevronRight,
 } from 'lucide-react'
-import {
-  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
-} from '@/components/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { useProfile } from '@/context/profile-context'
 import { getT, type TranslationKey } from '@/lib/i18n'
@@ -22,30 +20,48 @@ export interface SidebarNavProps {
   onToggleCollapse?: () => void
 }
 
-const NAV_ITEMS: { href: string; labelKey: TranslationKey; icon: React.FC<{ className?: string }> }[] = [
-  { href: '/dashboard',              labelKey: 'nav.dashboard',    icon: Home       },
-  { href: '/dashboard/learning',     labelKey: 'nav.learning',     icon: BookMarked },
-  { href: '/dashboard/modules',      labelKey: 'nav.modules',      icon: BookOpen   },
-  { href: '/dashboard/assessment',   labelKey: 'nav.assessment',   icon: FileText   },
-  { href: '/dashboard/ai-coach',     labelKey: 'nav.aiCoach',      icon: Sparkles   },
-  { href: '/dashboard/tools',        labelKey: 'nav.tools',        icon: Wand2      },
-  { href: '/dashboard/journal',      labelKey: 'nav.journal',      icon: PenLine    },
-  { href: '/dashboard/community',    labelKey: 'nav.community',    icon: Users      },
-  { href: '/dashboard/resources',    labelKey: 'nav.resources',    icon: Download   },
-  { href: '/dashboard/achievements', labelKey: 'nav.achievements', icon: Trophy     },
-  { href: '/dashboard/progress',     labelKey: 'nav.progress',     icon: TrendingUp },
-  { href: '/dashboard/settings',     labelKey: 'nav.settings',     icon: Settings   },
+const NAV_GROUPS = [
+  {
+    label: 'Learn',
+    items: [
+      { href: '/dashboard',              labelKey: 'nav.dashboard'    as TranslationKey, icon: Home       },
+      { href: '/dashboard/learning',     labelKey: 'nav.learning'     as TranslationKey, icon: BookMarked },
+      { href: '/dashboard/modules',      labelKey: 'nav.modules'      as TranslationKey, icon: BookOpen   },
+      { href: '/dashboard/assessment',   labelKey: 'nav.assessment'   as TranslationKey, icon: FileText   },
+    ],
+  },
+  {
+    label: 'AI & Tools',
+    items: [
+      { href: '/dashboard/ai-coach',     labelKey: 'nav.aiCoach'      as TranslationKey, icon: Sparkles   },
+      { href: '/dashboard/tools',        labelKey: 'nav.tools'        as TranslationKey, icon: Wand2      },
+      { href: '/dashboard/journal',      labelKey: 'nav.journal'      as TranslationKey, icon: PenLine    },
+    ],
+  },
+  {
+    label: 'Community',
+    items: [
+      { href: '/dashboard/community',    labelKey: 'nav.community'    as TranslationKey, icon: Users      },
+      { href: '/dashboard/resources',    labelKey: 'nav.resources'    as TranslationKey, icon: Download   },
+    ],
+  },
+  {
+    label: 'Progress',
+    items: [
+      { href: '/dashboard/achievements', labelKey: 'nav.achievements' as TranslationKey, icon: Trophy     },
+      { href: '/dashboard/progress',     labelKey: 'nav.progress'     as TranslationKey, icon: TrendingUp },
+      { href: '/dashboard/settings',     labelKey: 'nav.settings'     as TranslationKey, icon: Settings   },
+    ],
+  },
 ]
 
-export function SidebarNav({
-  isOpen = false,
-  isCollapsed = false,
-  onClose,
-  onToggleCollapse,
-}: SidebarNavProps) {
+// Flat list for rendering
+const NAV_ITEMS = NAV_GROUPS.flatMap(g => g.items)
+
+export function SidebarNav({ isOpen = false, isCollapsed = false, onClose, onToggleCollapse }: SidebarNavProps) {
   const pathname = usePathname()
-  const { lang } = useProfile()
-  const t        = getT(lang)
+  const { lang }  = useProfile()
+  const t         = getT(lang)
 
   useEffect(() => {
     if (!isOpen) return
@@ -55,91 +71,90 @@ export function SidebarNav({
   }, [isOpen, onClose])
 
   return (
-    <TooltipProvider delayDuration={350}>
+    <TooltipProvider delayDuration={300}>
 
-      {/* Mobile backdrop */}
       {isOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-20 md:hidden"
-          onClick={onClose}
-          aria-hidden="true"
-        />
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-20 md:hidden" onClick={onClose} aria-hidden />
       )}
 
-      {/*
-        .sidebar-nav sets the width (16rem mobile, 14rem/4rem desktop) via the
-        <style> tag in app/layout.tsx — width is NOT controlled by Tailwind classes
-        because Tailwind v4 never generates md:w-56 / md:w-16 for new files.
-
-        Mobile: translate-x-full hides it; translate-x-0 shows it as overlay.
-        Desktop: always visible (md:translate-x-0), positioned below the header.
-      */}
       <nav
         className={cn(
-          'sidebar-nav',
-          'fixed top-0 left-0 z-30',
-          'md:top-[57px]',
-          'h-[100dvh] md:h-[calc(100dvh-57px)]',
+          'sidebar-nav fixed top-0 left-0 z-30',
+          'md:top-[60px]',
+          'h-[100dvh] md:h-[calc(100dvh-60px)]',
           'flex flex-col',
-          'bg-sidebar border-r border-border/50',
-          'overflow-x-hidden',
-          'transition-transform duration-300 ease-in-out',
+          'bg-background border-r border-border/40',
+          'overflow-x-hidden transition-transform duration-300 ease-in-out',
           isOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full md:translate-x-0',
         )}
         aria-label="Main navigation"
       >
-        {/* Nav items list */}
+        {/* Scrollable nav list */}
         <div className={cn(
-          'flex-1 flex flex-col gap-0.5 overflow-y-auto py-3 scrollbar-none',
+          'flex-1 overflow-y-auto py-3 scrollbar-none',
           'pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:pb-3',
           isCollapsed ? 'px-2' : 'px-2.5',
         )}>
-          {NAV_ITEMS.map(({ href, labelKey, icon: Icon }) => {
-            const label    = t(labelKey)
-            const isActive = pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
-
-            const linkCls = cn(
-              'flex items-center gap-3 rounded-xl text-sm font-medium h-9',
-              'transition-all duration-200 ease-[cubic-bezier(0.32,0.72,0,1)]',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
-              isCollapsed ? 'justify-center px-0 w-9 mx-auto' : 'px-3',
-              isActive
-                ? 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold shadow-sm ring-1 ring-sidebar-accent/30'
-                : 'text-muted-foreground hover:text-foreground hover:bg-muted/60 active:scale-[0.97] active:bg-muted/80',
-            )
-
-            if (isCollapsed) {
-              return (
-                <Tooltip key={href}>
-                  <TooltipTrigger asChild>
-                    <Link href={href} onClick={onClose} aria-current={isActive ? 'page' : undefined} aria-label={label} className={linkCls}>
-                      <Icon className="w-4 h-4 shrink-0" aria-hidden="true" />
-                    </Link>
-                  </TooltipTrigger>
-                  <TooltipContent side="right" sideOffset={8}>{label}</TooltipContent>
-                </Tooltip>
-              )
-            }
-
-            return (
-              <Link key={href} href={href} onClick={onClose} aria-current={isActive ? 'page' : undefined} className={linkCls}>
-                <Icon className="w-4 h-4 shrink-0" aria-hidden="true" />
-                <span className="truncate leading-none">{label}</span>
-              </Link>
-            )
-          })}
+          {isCollapsed
+            /* Collapsed: flat icon list with tooltips */
+            ? NAV_ITEMS.map(({ href, labelKey, icon: Icon }) => {
+                const label    = t(labelKey)
+                const isActive = pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
+                return (
+                  <Tooltip key={href}>
+                    <TooltipTrigger asChild>
+                      <Link href={href} onClick={onClose} aria-current={isActive ? 'page' : undefined} aria-label={label}
+                        className={cn(
+                          'flex items-center justify-center w-9 h-9 mx-auto mb-0.5 rounded-xl transition-all duration-150',
+                          isActive
+                            ? 'bg-primary/12 text-primary'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-muted/70',
+                        )}>
+                        <Icon className="w-4 h-4 shrink-0" />
+                      </Link>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" sideOffset={8}>{label}</TooltipContent>
+                  </Tooltip>
+                )
+              })
+            /* Expanded: grouped list */
+            : NAV_GROUPS.map(({ label: groupLabel, items }) => (
+                <div key={groupLabel} className="mb-4">
+                  <p className="px-3 mb-1 text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest">
+                    {groupLabel}
+                  </p>
+                  {items.map(({ href, labelKey, icon: Icon }) => {
+                    const label    = t(labelKey)
+                    const isActive = pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
+                    return (
+                      <Link key={href} href={href} onClick={onClose} aria-current={isActive ? 'page' : undefined}
+                        className={cn(
+                          'relative flex items-center gap-2.5 h-8 px-3 rounded-lg text-[13px] font-medium mb-0.5',
+                          'transition-all duration-150',
+                          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                          isActive
+                            ? 'bg-primary/10 text-primary font-semibold'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-muted/60',
+                        )}>
+                        {isActive && <span className="absolute left-0 w-0.5 h-5 bg-primary rounded-r-full" aria-hidden />}
+                        <Icon className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate leading-none">{label}</span>
+                      </Link>
+                    )
+                  })}
+                </div>
+              ))
+          }
         </div>
 
-        {/* Desktop collapse toggle */}
-        <div className="hidden md:flex items-center justify-end shrink-0 border-t border-border/40 p-2">
+        {/* Collapse toggle */}
+        <div className="hidden md:flex items-center justify-end shrink-0 border-t border-border/30 p-2">
           <Tooltip>
             <TooltipTrigger asChild>
-              <button
-                onClick={onToggleCollapse}
-                className="flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-              >
-                {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+              <button onClick={onToggleCollapse}
+                className="w-7 h-7 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/70 transition-all duration-150"
+                aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
+                {isCollapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
               </button>
             </TooltipTrigger>
             <TooltipContent side="right" sideOffset={8}>
