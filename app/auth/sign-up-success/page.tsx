@@ -32,7 +32,7 @@ export default function Page() {
       const { error } = await supabase.auth.resend({
         type: 'signup',
         email: userEmail,
-        options: { emailRedirectTo: `${window.location.origin}/auth/login` },
+        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
       })
       if (error) throw error
       setResendState('sent')
