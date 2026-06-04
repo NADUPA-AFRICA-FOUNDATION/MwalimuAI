@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function POST() {
   // Verify the caller is authenticated
@@ -13,11 +13,7 @@ export async function POST() {
     })
   }
 
-  // Delete via admin client (service role bypasses RLS)
-  const admin = createAdminClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  )
+  const admin = createAdminClient()
 
   const { error } = await admin.auth.admin.deleteUser(user.id)
   if (error) {

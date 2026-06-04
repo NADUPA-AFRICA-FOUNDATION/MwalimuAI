@@ -15,5 +15,5 @@ export async function GET(request: NextRequest) {
   }
 
   // Code missing or exchange failed — send to error page
-  return NextResponse.redirect(`${origin}/auth/error?message=Could+not+confirm+your+account.+Try+signing+in+or+request+a+new+link.`)
+  return NextResponse.redirect(`${origin}/auth/error?error=Could+not+confirm+your+account.+Try+signing+in+or+request+a+new+link.`)
 }

@@ -24,7 +24,7 @@ export default function Page() {
     try {
       const supabase = createClient()
       await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: 'https://mwalimu-ai-nu.vercel.app/dashboard',
+        redirectTo: `${window.location.origin}/auth/callback?next=/auth/reset-password`,
       })
       // Always show success — don't reveal whether the email exists
       setSent(true)

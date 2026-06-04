@@ -43,7 +43,7 @@ export default function SignUpPage() {
       const { error: authError } = await supabase.auth.signUp({
         email: email.trim(),
         password,
-        options: { emailRedirectTo: 'https://mwalimu-ai-nu.vercel.app/dashboard' },
+        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
       })
       if (authError) { setError(mapError(authError.message)); return }
       router.push('/auth/sign-up-success')
