@@ -10,9 +10,11 @@
 -- =============================================================
 
 -- ── 1. Deduplicate: keep the newest row per user+program ──────
+-- Uses ctid (PostgreSQL's physical row identifier) so we don't need to
+-- know the actual primary key column name of this table.
 DELETE FROM public.learning_progress
-WHERE id NOT IN (
-  SELECT DISTINCT ON (user_id, program_id) id
+WHERE ctid NOT IN (
+  SELECT DISTINCT ON (user_id, program_id) ctid
   FROM public.learning_progress
   ORDER BY user_id, program_id, updated_at DESC NULLS LAST
 );
