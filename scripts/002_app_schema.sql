@@ -224,3 +224,71 @@ CREATE POLICY "ai_msg_delete_own" ON public.ai_messages
 CREATE INDEX IF NOT EXISTS idx_ai_conv_user_id    ON public.ai_conversations(user_id);
 CREATE INDEX IF NOT EXISTS idx_ai_conv_updated_at ON public.ai_conversations(updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_ai_msg_conv_id     ON public.ai_messages(conversation_id);
+
+
+-- ── 10. community_posts ───────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.community_posts (
+  id          UUID    PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     UUID    NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  author_name TEXT    NOT NULL DEFAULT '',
+  county      TEXT    NOT NULL DEFAULT '',
+  category    TEXT    NOT NULL DEFAULT '',
+  title       TEXT    NOT NULL DEFAULT '',
+  content     TEXT    NOT NULL DEFAULT '',
+  likes       TEXT[]  DEFAULT '{}',
+  created_at  TIMESTAMPTZ DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.community_posts ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "posts_select_all"    ON public.community_posts;
+DROP POLICY IF EXISTS "posts_insert_own"    ON public.community_posts;
+DROP POLICY IF EXISTS "posts_update_own"    ON public.community_posts;
+DROP POLICY IF EXISTS "posts_delete_own"    ON public.community_posts;
+
+-- Anyone logged in can read all posts
+CREATE POLICY "posts_select_all" ON public.community_posts
+  FOR SELECT USING (auth.uid() IS NOT NULL);
+
+CREATE POLICY "posts_insert_own" ON public.community_posts
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- Allow updating likes (any authenticated user) and full update by owner
+CREATE POLICY "posts_update_own" ON public.community_posts
+  FOR UPDATE USING (auth.uid() IS NOT NULL);
+
+CREATE POLICY "posts_delete_own" ON public.community_posts
+  FOR DELETE USING (auth.uid() = user_id);
+
+
+-- ── 11. community_comments ────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.community_comments (
+  id          UUID    PRIMARY KEY DEFAULT gen_random_uuid(),
+  post_id     UUID    NOT NULL REFERENCES public.community_posts(id) ON DELETE CASCADE,
+  user_id     UUID    NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  author_name TEXT    NOT NULL DEFAULT '',
+  body        TEXT    NOT NULL DEFAULT '',
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.community_comments ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "comments_select_all"  ON public.community_comments;
+DROP POLICY IF EXISTS "comments_insert_own"  ON public.community_comments;
+DROP POLICY IF EXISTS "comments_delete_own"  ON public.community_comments;
+
+CREATE POLICY "comments_select_all" ON public.community_comments
+  FOR SELECT USING (auth.uid() IS NOT NULL);
+
+CREATE POLICY "comments_insert_own" ON public.community_comments
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "comments_delete_own" ON public.community_comments
+  FOR DELETE USING (auth.uid() = user_id);
+
+
+-- ── 12. Indexes for community ─────────────────────────────────
+CREATE INDEX IF NOT EXISTS idx_community_posts_user_id    ON public.community_posts(user_id);
+CREATE INDEX IF NOT EXISTS idx_community_posts_created_at ON public.community_posts(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_community_comments_post_id ON public.community_comments(post_id);
