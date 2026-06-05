@@ -88,10 +88,12 @@ export async function printPDF({ title, subtitle, meta, content, type = 'default
       logging:         false,
       backgroundColor: '#ffffff',
       windowWidth:     820,
-      // Standard scroll compensation: tells html2canvas the current page scroll
-      // so it can correctly locate absolutely-positioned off-screen elements.
-      scrollX:         -window.scrollX,
-      scrollY:         -window.scrollY,
+      // html2canvas windowBounds uses scrollX/scrollY as positive offsets
+      // matching window.pageXOffset / pageYOffset (the defaults). Passing them
+      // explicitly prevents the library from reading a stale value during the
+      // async clone phase.
+      scrollX:         window.scrollX,
+      scrollY:         window.scrollY,
     })
 
     // ── 4. Slice canvas into A4 pages and build PDF ───────────────────────

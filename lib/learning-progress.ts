@@ -57,7 +57,7 @@ function cloudSync(programId: string, p: ProgramProgress) {
     certificate_earned_at: p.certificateEarnedAt ?? null,
     cohort_joined:         p.cohortJoined   ?? false,
     updated_at:            new Date().toISOString(),
-  }).then(() => {}, () => {})
+  }, { onConflict: 'user_id,program_id' }).then(() => {}, () => {})
 }
 
 // Called on sign-in: pulls cloud data into localStorage cache

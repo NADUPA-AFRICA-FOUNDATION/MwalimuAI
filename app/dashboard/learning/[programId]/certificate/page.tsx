@@ -40,26 +40,107 @@ export default function CertificatePage() {
   const postScore   = progress.postAssessment ? `${progress.postAssessment.score}/${progress.postAssessment.total}` : null
 
   const handlePrint = async () => {
-    if (!certRef.current) return
     setIsPrinting(true)
     try {
-      const { default: html2canvas } = await import('html2canvas')
-      const { jsPDF } = await import('jspdf')
-      await document.fonts.ready
-      const canvas = await html2canvas(certRef.current, {
-        scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff',
+      // Build a self-contained HTML certificate with inline styles so html2canvas
+      // doesn't need to resolve CSS custom properties or Tailwind variables.
+      const date  = earnedDate
+      const score = postScore ?? ''
+      const skills = program.certificate.skills
+
+      const skillChips = skills.map(s =>
+        `<span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;background:#edfaf6;color:#0c9a7b;padding:5px 12px;border-radius:999px;font-weight:600;margin:3px;">&#10003; ${s}</span>`
+      ).join('')
+
+      const html = `
+<div style="width:1122px;height:794px;background:#fff;font-family:-apple-system,'Segoe UI',Arial,sans-serif;position:relative;overflow:hidden;box-sizing:border-box;">
+  <!-- outer border rings -->
+  <div style="position:absolute;inset:14px;border:2px solid #b6eed8;border-radius:18px;pointer-events:none;"></div>
+  <div style="position:absolute;inset:22px;border:1px solid #edfaf6;border-radius:14px;pointer-events:none;"></div>
+  <!-- top colour band -->
+  <div style="height:8px;background:linear-gradient(90deg,#0c9a7b,#10b981,#0c9a7b);"></div>
+  <!-- body -->
+  <div style="padding:36px 64px 28px;text-align:center;position:relative;">
+    <!-- header row -->
+    <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:22px;">
+      <div style="width:50px;height:50px;background:#0c9a7b;border-radius:14px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(12,154,123,.3);">
+        <span style="color:#fff;font-size:24px;font-weight:900;">M</span>
+      </div>
+      <div style="text-align:left;">
+        <div style="font-size:16px;font-weight:800;color:#111;line-height:1.2;">Mwalimu AI</div>
+        <div style="font-size:11px;color:#6b7280;">Professional Development Platform</div>
+      </div>
+    </div>
+    <!-- badge -->
+    <div style="display:inline-flex;align-items:center;gap:8px;background:#edfaf6;color:#0c9a7b;padding:7px 18px;border-radius:999px;font-size:12px;font-weight:700;margin-bottom:18px;">
+      &#127891; Certificate of Completion
+    </div>
+    <!-- presented to -->
+    <p style="margin:0 0 4px;font-size:13px;color:#9ca3af;">This is to certify that</p>
+    <h1 style="margin:0 0 4px;font-size:38px;font-weight:800;color:#111;font-family:Georgia,serif;letter-spacing:-0.5px;">${teacherName}</h1>
+    <p style="margin:0 0 20px;font-size:13px;color:#9ca3af;">has successfully completed the</p>
+    <!-- programme name -->
+    <div style="border-top:1px solid #b6eed8;border-bottom:1px solid #b6eed8;padding:18px 0;margin-bottom:18px;">
+      <div style="font-size:22px;font-weight:800;color:#111;margin-bottom:4px;">${program.title}</div>
+      <div style="font-size:13px;color:#0c9a7b;font-weight:600;margin-bottom:4px;">${program.certificate.subtitle}</div>
+      <div style="font-size:11px;color:#9ca3af;">${program.kicdAlignment}</div>
+    </div>
+    <!-- skills -->
+    <p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:#9ca3af;margin:0 0 8px;">Competencies Demonstrated</p>
+    <div style="margin-bottom:18px;">${skillChips}</div>
+    ${score ? `<p style="font-size:11px;color:#9ca3af;margin:0 0 16px;">Post-Assessment Score: <strong style="color:#0c9a7b;">${score}</strong></p>` : ''}
+    <!-- footer row -->
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;padding-top:16px;border-top:1px solid #f3f4f6;">
+      <div style="text-align:left;">
+        <div style="font-size:10px;color:#9ca3af;margin-bottom:2px;">Completed</div>
+        <div style="font-size:13px;font-weight:700;color:#374151;">${date}</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="font-size:20px;font-weight:800;color:#0c9a7b;font-family:cursive;">Mwalimu AI</div>
+        <div style="width:100px;height:1px;background:#d1d5db;margin:4px auto;"></div>
+        <div style="font-size:10px;color:#9ca3af;">Authorised Signature</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:10px;color:#9ca3af;margin-bottom:2px;">Duration</div>
+        <div style="font-size:13px;font-weight:700;color:#374151;">${program.hours} hours</div>
+      </div>
+    </div>
+  </div>
+  <!-- bottom colour band -->
+  <div style="position:absolute;bottom:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#10b981,#0c9a7b,#10b981);"></div>
+</div>`
+
+      const container = document.createElement('div')
+      container.setAttribute('aria-hidden', 'true')
+      const docBottom = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight, window.scrollY + window.innerHeight) + 50
+      Object.assign(container.style, {
+        position: 'absolute', top: `${docBottom}px`, left: '0',
+        width: '1122px', background: '#fff', zIndex: '9999',
+        pointerEvents: 'none', overflow: 'visible',
       })
-      const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
-      // A4 landscape: 297mm × 210mm
-      const imgData = canvas.toDataURL('image/jpeg', 0.95)
-      const ratio   = canvas.width / canvas.height
-      const pdfW    = 297
-      const pdfH    = pdfW / ratio
-      const yOffset = Math.max(0, (210 - pdfH) / 2)
-      pdf.addImage(imgData, 'JPEG', 0, yOffset, pdfW, pdfH)
-      const safeName = (program.title ?? 'Certificate').replace(/[^a-z0-9 ]/gi, '_').slice(0, 60)
-      pdf.save(`${safeName}_Certificate.pdf`)
-    } finally { setIsPrinting(false) }
+      container.innerHTML = html
+      document.body.appendChild(container)
+
+      try {
+        await document.fonts.ready
+        const { default: html2canvas } = await import('html2canvas')
+        const { jsPDF }                = await import('jspdf')
+
+        const canvas = await html2canvas(container.firstElementChild as HTMLElement, {
+          scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff',
+          scrollX: window.scrollX, scrollY: window.scrollY,
+        })
+
+        const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
+        pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, 297, 210)
+        const safeName = (program.title ?? 'Certificate').replace(/[^a-z0-9 ]/gi, '_').slice(0, 60)
+        pdf.save(`${safeName}_Certificate.pdf`)
+      } finally {
+        if (container.parentNode) container.parentNode.removeChild(container)
+      }
+    } finally {
+      setIsPrinting(false)
+    }
   }
 
   const handleShare = async () => {
