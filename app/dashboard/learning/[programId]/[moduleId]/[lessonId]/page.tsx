@@ -12,6 +12,7 @@ import {
 } from '@/lib/learning-progress'
 import { useProfile } from '@/context/profile-context'
 import { recordActivity } from '@/lib/streak'
+import { createClient } from '@/lib/supabase/client'
 import { getLowBandwidth, speak, stopSpeaking, canSpeak } from '@/lib/accessibility'
 import { renderInline } from '@/lib/render-md'
 import { Button } from '@/components/ui/button'
@@ -58,8 +59,36 @@ export default function LessonPage() {
     const p = getProgress(program.id)
     setProgress(p)
     setReflection(p.reflections[`${mod.id}/${lesson.id}`] ?? '')
-    setDiscussions(getDiscussions(program.id, mod.id, lesson.id))
+    const localDiscs = getDiscussions(program.id, mod.id, lesson.id)
+    setDiscussions(localDiscs)
     setLowBandwidthState(getLowBandwidth())
+
+    // Background: load teacher-posted discussions from Supabase and merge in
+    const supabase = createClient()
+    supabase
+      .from('lesson_discussions')
+      .select('id, user_id, author, content, created_at, is_seed')
+      .eq('program_id', program.id)
+      .eq('module_id', mod.id)
+      .eq('lesson_id', lesson.id)
+      .eq('is_seed', false)
+      .order('created_at', { ascending: true })
+      .then(({ data }) => {
+        if (!data || data.length === 0) return
+        setDiscussions(prev => {
+          const existingIds = new Set(prev.map(d => d.id))
+          const remote: DiscussionPost[] = data
+            .filter(r => !existingIds.has(r.id as string))
+            .map(r => ({
+              id:        r.id as string,
+              author:    r.author as string,
+              content:   r.content as string,
+              timestamp: new Date(r.created_at as string).toLocaleDateString(),
+              isOwn:     false,
+            }))
+          return remote.length > 0 ? [...prev, ...remote] : prev
+        })
+      }, () => {})
     // Write current lesson to localStorage so AI Coach can pick it up
     try {
       localStorage.setItem(LESSON_CONTEXT_KEY, JSON.stringify({
@@ -109,6 +138,21 @@ export default function LessonPage() {
     const post = addDiscussionPost(program.id, mod.id, lesson.id, newPost.trim(), authorName)
     setDiscussions(prev => [...prev, post])
     setNewPost('')
+
+    // Sync to Supabase fire-and-forget
+    if (user) {
+      const supabase = createClient()
+      supabase.from('lesson_discussions').insert({
+        id:         post.id,
+        user_id:    user.id,
+        program_id: program.id,
+        module_id:  mod.id,
+        lesson_id:  lesson.id,
+        author:     authorName,
+        content:    post.content,
+        is_seed:    false,
+      }).then(() => {}, () => {})
+    }
   }
 
   const modIndex   = program.modules.findIndex(m => m.id === mod.id)

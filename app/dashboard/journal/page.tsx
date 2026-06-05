@@ -119,7 +119,7 @@ export default function JournalPage() {
             displayDate: displayDate((r.created_at as string).slice(0, 10)),
             prompt:      (r.title as string) ?? '',
             content:     (r.content as string) ?? '',
-            mood:        (r.mood as number) ?? 3,
+            mood:        Number(r.mood) || 3,
           }))
           setEntries(mapped)
           localStorage.setItem(JOURNAL_KEY, JSON.stringify(mapped))
@@ -180,7 +180,7 @@ export default function JournalPage() {
       user_id:    user.id,
       title:      entry.prompt,
       content:    entry.content,
-      mood:       String(entry.mood),
+      mood:       entry.mood,
       created_at: new Date(entry.date).toISOString(),
     }).then(() => {}, () => {}) // entry is still in localStorage if this fails
   }

@@ -47,6 +47,7 @@ const ALL_USER_KEYS = [
   'mwalimu_community', 'mwalimu_learning_progress', 'mwalimu_activity',
   'mwalimu_tools_used', 'mwalimu_journal', 'mwalimu_goals',
   'mwalimu_discussions', 'mwalimu_current_lesson', 'mwalimu_notifications_state',
+  'mwalimu_assessment',
 ]
 
 function clearLocalUserData() {

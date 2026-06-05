@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
@@ -11,6 +11,8 @@ import { BackButton } from '@/components/back-button'
 import { toast } from 'sonner'
 import { CheckCircle, ArrowRight, AlertCircle, ChevronRight, BookOpen, Award, Brain, Target } from 'lucide-react'
 import Link from 'next/link'
+import { useProfile } from '@/context/profile-context'
+import { createClient } from '@/lib/supabase/client'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -339,13 +341,72 @@ function knowledgeLabel(score: number): string {
 // Component
 // ---------------------------------------------------------------------------
 
+function restoreFromResponses(
+  savedResponses: Record<string, unknown>
+): { correct: Record<string, boolean>; revealed: Record<string, boolean> } {
+  const correct: Record<string, boolean> = {}
+  const revealed: Record<string, boolean> = {}
+  for (const q of questions) {
+    if (q.type === 'knowledge' && savedResponses[q.id] !== undefined) {
+      correct[q.id]  = (savedResponses[q.id] as number) === q.correctIndex
+      revealed[q.id] = true
+    }
+  }
+  return { correct, revealed }
+}
+
 export default function AssessmentPage() {
+  const { user } = useProfile()
   const [currentStep, setCurrentStep] = useState(0)
   const [responses, setResponses] = useState<Record<string, unknown>>({})
   // For knowledge questions: track which have been answered and whether correct
   const [knowledgeRevealed, setKnowledgeRevealed] = useState<Record<string, boolean>>({})
   const [knowledgeCorrect, setKnowledgeCorrect] = useState<Record<string, boolean>>({})
   const [completed, setCompleted] = useState(false)
+
+  // Restore completed assessment from localStorage (instant) or Supabase (cross-device)
+  useEffect(() => {
+    // 1. Try localStorage first for same-device instant restore
+    try {
+      const saved = localStorage.getItem('mwalimu_assessment')
+      if (saved) {
+        const parsed = JSON.parse(saved) as { completedAt?: string; responses?: Record<string, unknown> }
+        if (parsed.completedAt && parsed.responses) {
+          const { correct, revealed } = restoreFromResponses(parsed.responses)
+          setResponses(parsed.responses)
+          setKnowledgeCorrect(correct)
+          setKnowledgeRevealed(revealed)
+          setCompleted(true)
+          return
+        }
+      }
+    } catch {}
+
+    // 2. Fallback: pull from Supabase for cross-device restoration
+    if (!user) return
+    const supabase = createClient()
+    supabase.from('assessment_results')
+      .select('responses, completed_at')
+      .eq('user_id', user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!data?.responses) return
+        const savedResponses = data.responses as Record<string, unknown>
+        // Seed localStorage so next visit is instant
+        try {
+          localStorage.setItem('mwalimu_assessment', JSON.stringify({
+            completedAt: data.completed_at,
+            responses:   savedResponses,
+          }))
+        } catch {}
+        const { correct, revealed } = restoreFromResponses(savedResponses)
+        setResponses(savedResponses)
+        setKnowledgeCorrect(correct)
+        setKnowledgeRevealed(revealed)
+        setCompleted(true)
+      })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user])
 
   const totalQuestions = questions.length
   const currentQuestion = questions[currentStep]
@@ -403,14 +464,19 @@ export default function AssessmentPage() {
   }
 
   const handleSubmit = () => {
+    const completedAt = new Date().toISOString()
     try {
-      localStorage.setItem(
-        'mwalimu_assessment',
-        JSON.stringify({ completedAt: new Date().toISOString(), responses })
-      )
-    } catch {
-      // localStorage unavailable — continue without saving
+      localStorage.setItem('mwalimu_assessment', JSON.stringify({ completedAt, responses }))
+    } catch {}
+
+    // Sync to Supabase fire-and-forget
+    if (user) {
+      const supabase = createClient()
+      supabase.from('assessment_results')
+        .upsert({ user_id: user.id, responses, completed_at: completedAt }, { onConflict: 'user_id' })
+        .then(() => {}, () => {})
     }
+
     setCompleted(true)
     toast.success('Assessment complete! Your learning journey is now personalised.')
   }
