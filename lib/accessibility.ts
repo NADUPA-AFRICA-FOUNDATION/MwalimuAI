@@ -20,16 +20,57 @@ export function canSpeak(): boolean {
   return typeof window !== 'undefined' && 'speechSynthesis' in window
 }
 
+function pickVoice(lang: string): SpeechSynthesisVoice | null {
+  const voices = window.speechSynthesis.getVoices()
+  if (!voices.length) return null
+
+  const isSwahili = lang === 'sw'
+  const langPrefix = isSwahili ? 'sw' : 'en'
+
+  // Preferred voice name fragments, in order of quality
+  const preferred = isSwahili
+    ? ['Google', 'Swahili', 'sw']
+    : ['Google UK English Female', 'Google UK English Male', 'Google US English',
+       'Samantha', 'Karen', 'Daniel', 'Google', 'Microsoft Zira', 'Microsoft David']
+
+  const candidates = voices.filter(v =>
+    v.lang.toLowerCase().startsWith(langPrefix)
+  )
+
+  for (const pref of preferred) {
+    const match = candidates.find(v => v.name.includes(pref))
+    if (match) return match
+  }
+
+  // Fall back to any English voice
+  return candidates[0] ?? voices.find(v => v.lang.startsWith('en')) ?? null
+}
+
 export function speak(text: string, lang: string, onEnd?: () => void): void {
   if (!canSpeak()) return
   window.speechSynthesis.cancel()
-  const utt = new SpeechSynthesisUtterance(text)
-  // Use Kenyan English or Swahili voices if available
-  utt.lang  = lang === 'sw' ? 'sw-KE' : 'en-GB'
-  utt.rate  = 0.9
-  utt.pitch = 1
+
+  const utt  = new SpeechSynthesisUtterance(text)
+  utt.lang   = lang === 'sw' ? 'sw-KE' : 'en-GB'
+  utt.rate   = 0.88
+  utt.pitch  = 1.0
+  utt.volume = 1.0
   if (onEnd) utt.onend = onEnd
-  window.speechSynthesis.speak(utt)
+
+  const voices = window.speechSynthesis.getVoices()
+  if (voices.length > 0) {
+    const best = pickVoice(lang)
+    if (best) utt.voice = best
+    window.speechSynthesis.speak(utt)
+  } else {
+    // Voices load asynchronously on first call in some browsers
+    window.speechSynthesis.onvoiceschanged = () => {
+      window.speechSynthesis.onvoiceschanged = null
+      const best = pickVoice(lang)
+      if (best) utt.voice = best
+      window.speechSynthesis.speak(utt)
+    }
+  }
 }
 
 export function stopSpeaking(): void {
