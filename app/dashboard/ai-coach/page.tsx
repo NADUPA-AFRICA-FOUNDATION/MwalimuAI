@@ -267,14 +267,20 @@ function ChatPanel({
         ?.filter((p) => p.type === 'text').map((p) => p.text).join('')
         ?? (message as { content?: string }).content ?? ''
 
-      supabase.from('ai_messages').insert({
-        conversation_id: convId, role: 'assistant', content: text,
-      }).then(() => {}, () => {})
+      supabase.from('ai_messages')
+        .insert({ conversation_id: convId, role: 'assistant', content: text })
+        .then(
+          ({ error }) => { if (error) console.error('[AI Coach] Failed to save assistant message:', error.message) },
+          (err) => console.error('[AI Coach] Assistant message error:', err),
+        )
 
       supabase.from('ai_conversations')
         .update({ updated_at: new Date().toISOString() })
         .eq('id', convId)
-        .then(() => {}, () => {})
+        .then(
+          ({ error }) => { if (error) console.error('[AI Coach] Failed to update conversation timestamp:', error.message) },
+          () => {},
+        )
 
       onMessageSaved(convId)
     },
@@ -296,25 +302,31 @@ function ChatPanel({
 
     let convId = convIdRef.current
 
-    // Create conversation on first message (runs after send, in background)
+    // Create conversation on first message
     if (!convId) {
-      const { data } = await supabase.from('ai_conversations').insert({
-        user_id: userId,
-        title:   mkTitle(trimmed),
-      }).select().single()
+      const { data, error: convErr } = await supabase
+        .from('ai_conversations')
+        .insert({ user_id: userId, title: mkTitle(trimmed) })
+        .select()
+        .single()
 
-      if (data) {
+      if (convErr) {
+        console.error('[AI Coach] Failed to create conversation:', convErr.message)
+      } else if (data) {
         convId = data.id as string
         convIdRef.current = data.id as string
         onConversationCreated(data.id as string, data.title as string)
       }
     }
 
-    // Save user message (fire-and-forget)
+    // Save user message — log if it fails so we can diagnose persistence issues
     if (convId) {
-      supabase.from('ai_messages').insert({
-        conversation_id: convId, role: 'user', content: trimmed,
-      }).then(() => {}, () => {})
+      supabase.from('ai_messages')
+        .insert({ conversation_id: convId, role: 'user', content: trimmed })
+        .then(
+          ({ error }) => { if (error) console.error('[AI Coach] Failed to save user message:', error.message) },
+          (err) => console.error('[AI Coach] Message insert error:', err),
+        )
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [input, isLoading, userId, supabase, onConversationCreated, sendMessage])

@@ -125,7 +125,10 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
                     cbc_level: cached.cbcLevel,
                     completed: true,
                     updated_at: new Date().toISOString(),
-                  }).then(() => {}, () => {})
+                  }).then(
+                    ({ error }) => { if (error) console.error('[Profile] Re-sync failed:', error.message) },
+                    (err) => console.error('[Profile] Re-sync error:', err),
+                  )
                 }
               }
             }
@@ -160,21 +163,22 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(PROFILE_KEY, JSON.stringify(p))
 
     if (user) {
-      try {
-        await supabase.from('profiles').upsert({
-          id:        user.id,
-          name:      p.name,
-          school:    p.school,
-          county:    p.county,
-          subjects:  p.subjects,
-          grades:    p.grades,
-          cbc_level: p.cbcLevel,
-          lang,
-          completed: p.completed,
-          updated_at: new Date().toISOString(),
-        })
-      } catch (e) {
-        console.error('Failed to save profile:', e)
+      // supabase never throws — errors come back as { error }, not exceptions.
+      const { error } = await supabase.from('profiles').upsert({
+        id:        user.id,
+        name:      p.name,
+        school:    p.school,
+        county:    p.county,
+        subjects:  p.subjects,
+        grades:    p.grades,
+        cbc_level: p.cbcLevel,
+        lang,
+        completed: p.completed,
+        updated_at: new Date().toISOString(),
+      })
+      if (error) {
+        console.error('[Profile] Cloud save failed:', error.message)
+        // Profile is already in localStorage; cloud will re-sync on next login.
       }
     }
   }, [user, lang, supabase])
