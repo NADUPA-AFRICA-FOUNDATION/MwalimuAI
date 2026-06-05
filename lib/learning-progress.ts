@@ -212,7 +212,8 @@ export function getDiscussions(programId: string, moduleId: string, lessonId: st
 
 export function addDiscussionPost(
   programId: string, moduleId: string, lessonId: string,
-  content: string, authorName: string
+  content: string, authorName: string,
+  userId?: string,
 ): DiscussionPost {
   const all = readDisc()
   const key = `${programId}/${moduleId}/${lessonId}`
@@ -222,6 +223,22 @@ export function addDiscussionPost(
   }
   all[key] = [...(all[key] ?? []), post]
   writeDisc(all)
+
+  // Sync to cloud so posts survive logout and appear on other devices
+  if (userId) {
+    const supabase = createClient()
+    supabase.from('lesson_discussions').insert({
+      id:         post.id,
+      user_id:    userId,
+      program_id: programId,
+      module_id:  moduleId,
+      lesson_id:  lessonId,
+      author:     authorName,
+      content:    post.content,
+      is_seed:    false,
+    }).then(() => {}, () => {})
+  }
+
   return post
 }
 

@@ -1,5 +1,6 @@
 import { streamText } from 'ai'
 import { createOpenAI } from '@ai-sdk/openai'
+import { requireAuth } from '@/lib/require-auth'
 
 const groq = createOpenAI({ baseURL: 'https://api.groq.com/openai/v1', apiKey: process.env.GROQ_API_KEY })
 const ollama = createOpenAI({ baseURL: 'http://localhost:11434/v1', apiKey: 'ollama' })
@@ -21,6 +22,9 @@ async function isOllamaAvailable(): Promise<boolean> {
 }
 
 export async function POST(req: Request) {
+  const authError = await requireAuth(req)
+  if (authError) return authError
+
   const { assignment, submission, rubric, lang } = await req.json()
 
   const langLine = lang === 'sw' ? 'IMPORTANT: Respond in Kiswahili.\n\n' : ''

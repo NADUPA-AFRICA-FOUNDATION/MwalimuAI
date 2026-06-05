@@ -135,24 +135,9 @@ export default function LessonPage() {
   const handlePostDiscussion = () => {
     if (!newPost.trim()) return
     const authorName = profile?.name ?? 'Anonymous Teacher'
-    const post = addDiscussionPost(program.id, mod.id, lesson.id, newPost.trim(), authorName)
+    const post = addDiscussionPost(program.id, mod.id, lesson.id, newPost.trim(), authorName, user?.id)
     setDiscussions(prev => [...prev, post])
     setNewPost('')
-
-    // Sync to Supabase fire-and-forget
-    if (user) {
-      const supabase = createClient()
-      supabase.from('lesson_discussions').insert({
-        id:         post.id,
-        user_id:    user.id,
-        program_id: program.id,
-        module_id:  mod.id,
-        lesson_id:  lesson.id,
-        author:     authorName,
-        content:    post.content,
-        is_seed:    false,
-      }).then(() => {}, () => {})
-    }
   }
 
   const modIndex   = program.modules.findIndex(m => m.id === mod.id)
