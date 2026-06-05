@@ -99,11 +99,35 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
               .eq('id', nextUser.id)
               .maybeSingle()
 
-            if (data) {
-              const p = dbToProfile(data as Record<string, unknown>)
+            const row = data as Record<string, unknown> | null
+
+            if (row?.completed) {
+              // Cloud has a finished profile — use it as source of truth
+              const p = dbToProfile(row)
               setProfileState(p)
               localStorage.setItem(PROFILE_KEY, JSON.stringify(p))
-              if (data.lang === 'en' || data.lang === 'sw') setLangState(data.lang as Lang)
+              if (row.lang === 'en' || row.lang === 'sw') setLangState(row.lang as Lang)
+            } else {
+              // Cloud has no row or an incomplete row — prefer localStorage cache
+              const local = localStorage.getItem(PROFILE_KEY)
+              if (local) {
+                const cached = JSON.parse(local) as TeacherProfile
+                setProfileState(cached)
+                // Re-sync completed profile back to cloud so future logins work without localStorage
+                if (cached.completed) {
+                  supabase.from('profiles').upsert({
+                    id:        nextUser.id,
+                    name:      cached.name,
+                    school:    cached.school,
+                    county:    cached.county,
+                    subjects:  cached.subjects,
+                    grades:    cached.grades,
+                    cbc_level: cached.cbcLevel,
+                    completed: true,
+                    updated_at: new Date().toISOString(),
+                  }).then(() => {}, () => {})
+                }
+              }
             }
           } catch {
             const local = localStorage.getItem(PROFILE_KEY)
