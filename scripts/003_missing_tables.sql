@@ -30,6 +30,9 @@ CREATE POLICY "journal_insert_own" ON public.journal_entries
 CREATE POLICY "journal_delete_own" ON public.journal_entries
   FOR DELETE USING (auth.uid() = user_id);
 
+-- Ensure column exists if table was created before this migration
+ALTER TABLE public.journal_entries ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
 CREATE INDEX IF NOT EXISTS idx_journal_entries_user_id    ON public.journal_entries(user_id);
 CREATE INDEX IF NOT EXISTS idx_journal_entries_created_at ON public.journal_entries(created_at DESC);
 
@@ -64,6 +67,9 @@ CREATE POLICY "goals_update_own" ON public.goals
 
 CREATE POLICY "goals_delete_own" ON public.goals
   FOR DELETE USING (auth.uid() = user_id);
+
+ALTER TABLE public.goals ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE public.goals ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
 CREATE INDEX IF NOT EXISTS idx_goals_user_id    ON public.goals(user_id);
 CREATE INDEX IF NOT EXISTS idx_goals_created_at ON public.goals(created_at ASC);
@@ -126,6 +132,8 @@ CREATE POLICY "disc_insert_own" ON public.lesson_discussions
 
 CREATE POLICY "disc_delete_own" ON public.lesson_discussions
   FOR DELETE USING (auth.uid() = user_id);
+
+ALTER TABLE public.lesson_discussions ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
 
 CREATE INDEX IF NOT EXISTS idx_lesson_disc_lesson  ON public.lesson_discussions(program_id, module_id, lesson_id);
 CREATE INDEX IF NOT EXISTS idx_lesson_disc_user_id ON public.lesson_discussions(user_id);
