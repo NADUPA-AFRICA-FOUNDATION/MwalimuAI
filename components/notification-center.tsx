@@ -6,6 +6,7 @@ import { Bell, X, BookOpen, Award, MessageSquare, Megaphone, Check, Trash2 } fro
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
+import { trackWrite } from '@/lib/write-queue'
 import { useProfile } from '@/context/profile-context'
 
 type NotificationType = 'course' | 'achievement' | 'community' | 'announcement'
@@ -101,14 +102,12 @@ export function NotificationCenter() {
     setNotifications(buildNotifications(loadState()))
   }, [])
 
-  // Fire-and-forget: write notification state to profiles.notifications_state
   const persistToCloud = useCallback((state: NotifState) => {
     if (!user) return
     const supabase = createClient()
-    supabase
+    trackWrite(supabase
       .from('profiles')
-      .upsert({ id: user.id, notifications_state: state, updated_at: new Date().toISOString() })
-      .then(() => {}, () => {})
+      .upsert({ id: user.id, notifications_state: state, updated_at: new Date().toISOString() }))
   }, [user])
 
   const unreadCount = notifications.filter(n => !n.read).length

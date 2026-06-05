@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/client'
+import { trackWrite } from '@/lib/write-queue'
 
 const KEY = 'mwalimu_a11y'
 
@@ -39,10 +40,9 @@ export function saveA11y(settings: A11ySettings): void {
   applyA11y(settings)
   if (_userId) {
     const supabase = createClient()
-    supabase
+    trackWrite(supabase
       .from('profiles')
-      .upsert({ id: _userId, a11y_settings: settings, updated_at: new Date().toISOString() })
-      .then(() => {}, () => {})
+      .upsert({ id: _userId, a11y_settings: settings, updated_at: new Date().toISOString() }))
   }
 }
 

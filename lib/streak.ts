@@ -3,6 +3,7 @@
 // Cloud: Supabase activity_log table — synced on login and on each new activity.
 
 import { createClient } from '@/lib/supabase/client'
+import { trackWrite } from '@/lib/write-queue'
 
 const ACTIVITY_KEY = 'mwalimu_activity'
 const TOOLS_KEY    = 'mwalimu_tools_used'
@@ -42,10 +43,9 @@ export function recordActivity(type: ActivityType, userId?: string) {
   // Sync to Supabase fire-and-forget
   if (userId) {
     const supabase = createClient()
-    supabase
+    trackWrite(supabase
       .from('activity_log')
-      .upsert({ user_id: userId, date: d, type }, { onConflict: 'user_id,date,type' })
-      .then(() => {}, () => {})
+      .upsert({ user_id: userId, date: d, type }, { onConflict: 'user_id,date,type' }))
   }
 }
 
@@ -107,10 +107,9 @@ export function recordToolUsed(toolId: string, userId?: string) {
   } catch {}
   if (userId) {
     const supabase = createClient()
-    supabase
+    trackWrite(supabase
       .from('tools_used')
-      .upsert({ user_id: userId, tool_id: toolId }, { onConflict: 'user_id,tool_id' })
-      .then(() => {}, () => {})
+      .upsert({ user_id: userId, tool_id: toolId }, { onConflict: 'user_id,tool_id' }))
   }
 }
 

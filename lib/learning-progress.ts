@@ -1,5 +1,6 @@
 import type { Program } from './learning-paths-data'
 import { createClient } from '@/lib/supabase/client'
+import { trackWrite } from '@/lib/write-queue'
 
 const KEY      = 'mwalimu_learning_progress'
 const DISC_KEY = 'mwalimu_discussions'
@@ -46,7 +47,7 @@ function write(data: AllProgress) {
 function cloudSync(programId: string, p: ProgramProgress) {
   if (!_userId) return
   const supabase = createClient()
-  supabase.from('learning_progress').upsert({
+  trackWrite(supabase.from('learning_progress').upsert({
     user_id:               _userId,
     program_id:            programId,
     completed_lessons:     p.completedLessons,
@@ -57,7 +58,7 @@ function cloudSync(programId: string, p: ProgramProgress) {
     certificate_earned_at: p.certificateEarnedAt ?? null,
     cohort_joined:         p.cohortJoined   ?? false,
     updated_at:            new Date().toISOString(),
-  }, { onConflict: 'user_id,program_id' }).then(() => {}, () => {})
+  }, { onConflict: 'user_id,program_id' }))
 }
 
 // Called on sign-in: pulls cloud data into localStorage cache
@@ -227,7 +228,7 @@ export function addDiscussionPost(
   // Sync to cloud so posts survive logout and appear on other devices
   if (userId) {
     const supabase = createClient()
-    supabase.from('lesson_discussions').insert({
+    trackWrite(supabase.from('lesson_discussions').insert({
       id:         post.id,
       user_id:    userId,
       program_id: programId,
@@ -236,7 +237,7 @@ export function addDiscussionPost(
       author:     authorName,
       content:    post.content,
       is_seed:    false,
-    }).then(() => {}, () => {})
+    }))
   }
 
   return post

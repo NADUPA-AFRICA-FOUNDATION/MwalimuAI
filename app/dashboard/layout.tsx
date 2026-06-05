@@ -8,6 +8,7 @@ import { MobileBottomNav } from '@/components/mobile-bottom-nav'
 import { OfflineIndicator } from '@/components/offline-indicator'
 import { useProfile } from '@/context/profile-context'
 import { createClient } from '@/lib/supabase/client'
+import { trackWrite } from '@/lib/write-queue'
 
 const COLLAPSE_KEY = 'mwalimu_sidebar_collapsed'
 
@@ -41,10 +42,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       try { localStorage.setItem(COLLAPSE_KEY, String(next)) } catch {}
       if (user) {
         const supabase = createClient()
-        supabase
+        trackWrite(supabase
           .from('profiles')
-          .upsert({ id: user.id, sidebar_collapsed: next, updated_at: new Date().toISOString() })
-          .then(() => {}, () => {})
+          .upsert({ id: user.id, sidebar_collapsed: next, updated_at: new Date().toISOString() }))
       }
       return next
     })

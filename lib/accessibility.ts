@@ -1,6 +1,7 @@
 // Low-bandwidth mode + audio lesson helpers
 
 import { createClient } from '@/lib/supabase/client'
+import { trackWrite } from '@/lib/write-queue'
 
 const LBW_KEY = 'mwalimu_low_bandwidth'
 
@@ -22,10 +23,9 @@ export function setLowBandwidth(on: boolean): void {
   window.dispatchEvent(new Event('mwalimu-lbw-change'))
   if (_userId) {
     const supabase = createClient()
-    supabase
+    trackWrite(supabase
       .from('profiles')
-      .upsert({ id: _userId, low_bandwidth: on, updated_at: new Date().toISOString() })
-      .then(() => {}, () => {})
+      .upsert({ id: _userId, low_bandwidth: on, updated_at: new Date().toISOString() }))
   }
 }
 

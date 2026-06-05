@@ -9,6 +9,7 @@ import { syncActivityFromSupabase, syncToolsUsedFromSupabase } from '@/lib/strea
 import { setLearningProgressUser, loadProgressFromCloud } from '@/lib/learning-progress'
 import { setA11yUser, applyA11y, type A11ySettings } from '@/lib/a11y-settings'
 import { setAccessibilityUser } from '@/lib/accessibility'
+import { trackWrite, flushWrites } from '@/lib/write-queue'
 import { type Lang } from '@/lib/i18n'
 
 export interface TeacherProfile {
@@ -108,10 +109,9 @@ function applyPrefsFromRow(row: Record<string, unknown>, userId: string, account
       try { localStorage.setItem('mwalimu_notifications_state', JSON.stringify(seeded)) } catch {}
       // Persist the seed to Supabase so it is ready on the next new device
       const supabase = createClient()
-      supabase
+      trackWrite(supabase
         .from('profiles')
-        .upsert({ id: userId, notifications_state: seeded, updated_at: new Date().toISOString() })
-        .then(() => {}, () => {})
+        .upsert({ id: userId, notifications_state: seeded, updated_at: new Date().toISOString() }))
     }
   }
 }
@@ -267,7 +267,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     if (typeof window !== 'undefined') document.documentElement.lang = l === 'sw' ? 'sw' : 'en'
     try { localStorage.setItem(LANG_KEY, l) } catch {}
     if (user) {
-      supabase.from('profiles').upsert({ id: user.id, lang: l, updated_at: new Date().toISOString() }).then(() => {}, () => {})
+      trackWrite(supabase.from('profiles').upsert({ id: user.id, lang: l, updated_at: new Date().toISOString() }))
     }
   }, [user, supabase])
 
@@ -277,16 +277,16 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       if (typeof window !== 'undefined') document.documentElement.lang = next === 'sw' ? 'sw' : 'en'
       try { localStorage.setItem(LANG_KEY, next) } catch {}
       if (user) {
-        supabase.from('profiles').upsert({ id: user.id, lang: next, updated_at: new Date().toISOString() }).then(() => {}, () => {})
+        trackWrite(supabase.from('profiles').upsert({ id: user.id, lang: next, updated_at: new Date().toISOString() }))
       }
       return next
     })
   }, [user, supabase])
 
   const signOut = useCallback(async () => {
-    // Give any queued fire-and-forget writes a moment to land before the
-    // session token is invalidated, then sign out and wipe local state.
-    await new Promise(r => setTimeout(r, 300))
+    // Drain all in-flight writes before invalidating the session token.
+    // flushWrites() resolves when every tracked promise settles (or after 3s).
+    await flushWrites()
     await supabase.auth.signOut()
     setLearningProgressUser(null)
     setA11yUser(null)
