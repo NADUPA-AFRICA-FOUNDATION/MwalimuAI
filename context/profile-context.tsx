@@ -30,6 +30,7 @@ interface ProfileContextType {
   setProfile:   (p: TeacherProfile) => Promise<void>
   clearProfile: () => void
   mounted:      boolean
+  syncReady:    boolean
   lang:         Lang
   setLang:      (l: Lang) => void
   toggleLang:   () => void
@@ -38,7 +39,7 @@ interface ProfileContextType {
 const ProfileContext = createContext<ProfileContextType>({
   user: null, authLoading: true, signOut: async () => {},
   profile: null, setProfile: async () => {}, clearProfile: () => {},
-  mounted: false,
+  mounted: false, syncReady: false,
   lang: 'en', setLang: () => {}, toggleLang: () => {},
 })
 
@@ -122,6 +123,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const [profile, setProfileState]    = useState<TeacherProfile | null>(null)
   const [lang, setLangState]          = useState<Lang>('en')
   const [mounted, setMounted]         = useState(false)
+  const [syncReady, setSyncReady]     = useState(false)
   // Stable client — one instance per provider lifecycle so all writes share
   // the same auth session and onAuthStateChange fires exactly once.
   const [supabase] = useState(() => createClient())
@@ -142,6 +144,9 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         setUser(nextUser)
 
         if (nextUser) {
+          // Reset syncReady so the dashboard waits for fresh cloud data
+          setSyncReady(false)
+
           // Wire per-user Supabase sync for all setting modules
           setLearningProgressUser(nextUser.id)
           setA11yUser(nextUser.id)
@@ -200,19 +205,13 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
           const storedLang = localStorage.getItem(LANG_KEY) as Lang | null
           if (storedLang === 'en' || storedLang === 'sw') setLangState(storedLang)
 
-          // Auth is resolved — let the layout render and the auth guard run.
-          // mounted stays false until the cloud syncs below finish so that any
-          // page reading localStorage (e.g. dashboard stats) doesn't read stale
-          // empty data before the sync has populated the cache.
-          setAuthLoading(false)
-
-          // Await all three syncs so localStorage is fully populated before
-          // mounted flips to true and the dashboard re-reads its stats.
-          await Promise.allSettled([
+          // Kick off cloud syncs in the background. setSyncReady(true) fires when
+          // all three settle so the dashboard knows localStorage is freshly populated.
+          Promise.allSettled([
             syncActivityFromSupabase(nextUser.id),
             syncToolsUsedFromSupabase(nextUser.id),
             loadProgressFromCloud(nextUser.id),
-          ])
+          ]).then(() => setSyncReady(true))
         } else {
           // Session gone (sign-out or expiry) — null out all module user IDs
           // so subsequent writes don't attempt authenticated Supabase calls
@@ -221,9 +220,12 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
           setA11yUser(null)
           setAccessibilityUser(null)
           setProfileState(null)
-          setAuthLoading(false)
+          setSyncReady(false)
         }
 
+        // Always resolve auth and mount together — never leave the app in a
+        // partial state where authLoading=false but mounted=false.
+        setAuthLoading(false)
         setMounted(true)
       }
     )
@@ -298,7 +300,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   return (
     <ProfileContext.Provider value={{
       user, authLoading, signOut,
-      profile, setProfile, clearProfile, mounted,
+      profile, setProfile, clearProfile, mounted, syncReady,
       lang, setLang, toggleLang,
     }}>
       {children}

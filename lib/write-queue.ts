@@ -8,9 +8,10 @@
 
 const pending = new Set<Promise<unknown>>()
 
-export function trackWrite(p: Promise<unknown>): void {
-  pending.add(p)
-  p.finally(() => pending.delete(p))
+export function trackWrite(p: PromiseLike<unknown>): void {
+  const normalized = Promise.resolve(p)
+  pending.add(normalized)
+  normalized.finally(() => pending.delete(normalized))
 }
 
 export async function flushWrites(timeoutMs = 3000): Promise<void> {
