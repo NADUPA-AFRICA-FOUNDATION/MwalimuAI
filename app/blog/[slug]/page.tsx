@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { BackButton } from '@/components/back-button'
 import { getBlogPost, getAllBlogPosts } from '@/lib/blog-data'
+import { renderInline } from '@/lib/render-md'
 import { Calendar, Clock, User, GraduationCap, ArrowRight } from 'lucide-react'
 
 export async function generateStaticParams() {
@@ -125,7 +126,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
               if (trimmed.startsWith('## ')) {
                 return (
                   <h2 key={index} className="text-2xl font-bold mt-8 mb-4 text-foreground">
-                    {trimmed.replace('## ', '')}
+                    {renderInline(trimmed.slice(3))}
                   </h2>
                 )
               }
@@ -133,7 +134,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
               if (trimmed.startsWith('### ')) {
                 return (
                   <h3 key={index} className="text-xl font-semibold mt-6 mb-3 text-foreground">
-                    {trimmed.replace('### ', '')}
+                    {renderInline(trimmed.slice(4))}
                   </h3>
                 )
               }
@@ -141,7 +142,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
               if (trimmed.startsWith('**') && trimmed.endsWith('**')) {
                 return (
                   <p key={index} className="font-semibold text-foreground my-4">
-                    {trimmed.replace(/\*\*/g, '')}
+                    {trimmed.slice(2, -2)}
                   </p>
                 )
               }
@@ -149,14 +150,14 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
               if (trimmed.startsWith('- ')) {
                 return (
                   <li key={index} className="text-muted-foreground ml-6 my-1">
-                    {trimmed.replace('- ', '')}
+                    {renderInline(trimmed.slice(2))}
                   </li>
                 )
               }
 
               return (
                 <p key={index} className="text-muted-foreground my-4 leading-relaxed">
-                  {trimmed}
+                  {renderInline(trimmed)}
                 </p>
               )
             })}

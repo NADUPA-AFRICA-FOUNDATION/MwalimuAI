@@ -13,6 +13,7 @@ import {
 import { useProfile } from '@/context/profile-context'
 import { recordActivity } from '@/lib/streak'
 import { getLowBandwidth, speak, stopSpeaking, canSpeak } from '@/lib/accessibility'
+import { renderInline } from '@/lib/render-md'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import {
@@ -284,9 +285,21 @@ export default function LessonPage() {
               </div>
             </div>
             <div className="prose prose-sm max-w-none dark:prose-invert">
-              {lesson.reading.split('\n\n').map((para, i) => (
-                <p key={i} className="text-sm leading-relaxed mb-4 text-foreground">{para}</p>
-              ))}
+              {lesson.reading.split('\n\n').map((para, i) => {
+                const trimmed = para.trim()
+                if (/^\*\*[^*]+\*\*$/.test(trimmed)) {
+                  return (
+                    <h3 key={i} className="font-semibold text-sm mt-5 mb-1 text-foreground">
+                      {trimmed.slice(2, -2)}
+                    </h3>
+                  )
+                }
+                return (
+                  <p key={i} className="text-sm leading-relaxed mb-4 text-foreground">
+                    {renderInline(trimmed)}
+                  </p>
+                )
+              })}
             </div>
             <div className="flex items-center gap-2 mt-5 pt-5 border-t border-border/40">
               <Lightbulb className="w-4 h-4 text-accent shrink-0" />
