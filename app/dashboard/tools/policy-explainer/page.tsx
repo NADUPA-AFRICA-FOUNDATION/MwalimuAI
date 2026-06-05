@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { BackButton } from '@/components/back-button'
 import { useProfile } from '@/context/profile-context'
+import { recordToolUsed } from '@/lib/streak'
 import { FileText, Wand2, RefreshCw, Copy, Check, AlertCircle, Printer } from 'lucide-react'
 import { MarkdownRenderer } from '@/components/markdown-renderer'
 import { printPDF } from '@/lib/print-pdf'
@@ -19,7 +20,7 @@ const EXAMPLES = [
 ]
 
 export default function PolicyExplainerPage() {
-  const { lang } = useProfile()
+  const { lang, user } = useProfile()
 
   const [policyText, setPolicyText] = useState('')
   const [output, setOutput]         = useState('')
@@ -47,6 +48,7 @@ export default function PolicyExplainerPage() {
         const data = await res.json().catch(() => ({}))
         throw new Error((data as { error?: string }).error ?? `Error ${res.status}`)
       }
+      recordToolUsed('policy-explainer', user?.id)
       const reader = res.body?.getReader()
       if (!reader) throw new Error('No stream')
       const decoder = new TextDecoder()

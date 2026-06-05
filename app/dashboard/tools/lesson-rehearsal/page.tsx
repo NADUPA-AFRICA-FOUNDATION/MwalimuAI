@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { BackButton } from '@/components/back-button'
 import { useProfile } from '@/context/profile-context'
+import { recordToolUsed } from '@/lib/streak'
 import { authHeaders } from '@/lib/authed-fetch'
 import {
   Users, Send, RefreshCw, AlertCircle, Play, RotateCcw,
@@ -17,7 +18,7 @@ import {
 const GRADES = ['PP1', 'PP2', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9']
 
 export default function LessonRehearsalPage() {
-  const { lang } = useProfile()
+  const { lang, user } = useProfile()
   const bottomRef = useRef<HTMLDivElement>(null)
 
   const [lessonPlan, setLessonPlan]   = useState('')
@@ -46,6 +47,7 @@ export default function LessonRehearsalPage() {
 
   const startRehearsal = () => {
     if (lessonPlan.trim().length < 30) return
+    recordToolUsed('lesson-rehearsal', user?.id)
     setMessages([])
     setPhase('chat')
     const opener = `Good morning class! Today we are going to learn about ${lessonPlan.split('\n')[0].slice(0, 80)}. Please sit down and get ready.`

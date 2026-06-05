@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { authedFetch } from '@/lib/authed-fetch'
+import { useProfile } from '@/context/profile-context'
+import { recordToolUsed } from '@/lib/streak'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -39,6 +41,7 @@ Please write the complete document ready for use.`
 }
 
 export default function ParentCommsPage() {
+  const { user } = useProfile()
   const [form, setForm] = useState({
     type: 'letter', grade: '', studentName: '', topic: '',
     keyPoints: '', tone: 'Warm & Supportive', teacherName: '',
@@ -75,6 +78,7 @@ export default function ParentCommsPage() {
         throw new Error(data.error ?? `Server error ${res.status}`)
       }
 
+      recordToolUsed('parent-comms', user?.id)
       const reader = res.body?.getReader()
       if (!reader) throw new Error('No response stream')
       const decoder = new TextDecoder()

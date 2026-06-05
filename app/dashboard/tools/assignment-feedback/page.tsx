@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { BackButton } from '@/components/back-button'
 import { useProfile } from '@/context/profile-context'
+import { recordToolUsed } from '@/lib/streak'
 import {
   ClipboardCheck, Wand2, RefreshCw, Copy, Check, AlertCircle,
   Printer, ShieldAlert, ShieldCheck, ShieldQuestion, ChevronDown,
@@ -92,7 +93,7 @@ function DetectionBanner({ result, onDismiss }: { result: DetectionResult; onDis
 }
 
 export default function AssignmentFeedbackPage() {
-  const { lang } = useProfile()
+  const { lang, user } = useProfile()
   const outputRef = useRef<HTMLDivElement>(null)
 
   const [workType, setWorkType] = useState('Lesson Plan')
@@ -149,6 +150,7 @@ export default function AssignmentFeedbackPage() {
           const data = await res.json().catch(() => ({}))
           throw new Error((data as { error?: string }).error ?? `Error ${res.status}`)
         }
+        recordToolUsed('assignment-feedback', user?.id)
         const reader = res.body?.getReader()
         if (!reader) throw new Error('No stream')
         const decoder = new TextDecoder()

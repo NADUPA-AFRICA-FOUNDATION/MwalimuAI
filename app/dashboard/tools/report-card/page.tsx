@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { authedFetch } from '@/lib/authed-fetch'
+import { useProfile } from '@/context/profile-context'
+import { recordToolUsed } from '@/lib/streak'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -42,6 +44,7 @@ Remember: 60–80 words, CBC-aligned, parent-friendly, positive and encouraging.
 }
 
 export default function ReportCardPage() {
+  const { user } = useProfile()
   const [form, setForm] = useState({
     grade: '', subject: '', performance: '', gender: 'They/Their',
     strengths: '', improvements: '', effort: 'Consistent',
@@ -78,6 +81,7 @@ export default function ReportCardPage() {
         throw new Error(data.error ?? `Server error ${res.status}`)
       }
 
+      recordToolUsed('report-card', user?.id)
       const reader = res.body?.getReader()
       if (!reader) throw new Error('No response stream')
       const decoder = new TextDecoder()
