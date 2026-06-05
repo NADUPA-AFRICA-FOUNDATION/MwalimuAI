@@ -122,7 +122,9 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const [profile, setProfileState]    = useState<TeacherProfile | null>(null)
   const [lang, setLangState]          = useState<Lang>('en')
   const [mounted, setMounted]         = useState(false)
-  const supabase = createClient()
+  // Stable client — one instance per provider lifecycle so all writes share
+  // the same auth session and onAuthStateChange fires exactly once.
+  const [supabase] = useState(() => createClient())
 
   useEffect(() => {
     // Get initial session
@@ -203,6 +205,12 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
           syncToolsUsedFromSupabase(nextUser.id).catch(() => {})
           loadProgressFromCloud(nextUser.id).catch(() => {})
         } else {
+          // Session gone (sign-out or expiry) — null out all module user IDs
+          // so subsequent writes don't attempt authenticated Supabase calls
+          // with a stale (now-invalid) token.
+          setLearningProgressUser(null)
+          setA11yUser(null)
+          setAccessibilityUser(null)
           setProfileState(null)
         }
 
@@ -267,6 +275,9 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   }, [user, supabase])
 
   const signOut = useCallback(async () => {
+    // Give any queued fire-and-forget writes a moment to land before the
+    // session token is invalidated, then sign out and wipe local state.
+    await new Promise(r => setTimeout(r, 300))
     await supabase.auth.signOut()
     setLearningProgressUser(null)
     setA11yUser(null)
