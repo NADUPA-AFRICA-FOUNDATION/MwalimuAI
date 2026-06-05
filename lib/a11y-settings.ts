@@ -1,4 +1,12 @@
+import { createClient } from '@/lib/supabase/client'
+
 const KEY = 'mwalimu_a11y'
+
+let _userId: string | null = null
+
+export function setA11yUser(userId: string | null) {
+  _userId = userId
+}
 
 export interface A11ySettings {
   textSize:     'normal' | 'large' | 'xlarge' | 'xxlarge'
@@ -29,6 +37,13 @@ export function saveA11y(settings: A11ySettings): void {
   if (typeof window === 'undefined') return
   localStorage.setItem(KEY, JSON.stringify(settings))
   applyA11y(settings)
+  if (_userId) {
+    const supabase = createClient()
+    supabase
+      .from('profiles')
+      .upsert({ id: _userId, a11y_settings: settings, updated_at: new Date().toISOString() })
+      .then(() => {}, () => {})
+  }
 }
 
 /**

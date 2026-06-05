@@ -7,6 +7,8 @@ import { type User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
 import { syncActivityFromSupabase, syncToolsUsedFromSupabase } from '@/lib/streak'
 import { setLearningProgressUser, loadProgressFromCloud } from '@/lib/learning-progress'
+import { setA11yUser, applyA11y, type A11ySettings } from '@/lib/a11y-settings'
+import { setAccessibilityUser } from '@/lib/accessibility'
 import { type Lang } from '@/lib/i18n'
 
 export interface TeacherProfile {
@@ -44,10 +46,10 @@ const LANG_KEY    = 'mwalimu_lang'
 
 const ALL_USER_KEYS = [
   PROFILE_KEY, LANG_KEY,
-  'mwalimu_community', 'mwalimu_learning_progress', 'mwalimu_activity',
-  'mwalimu_tools_used', 'mwalimu_journal', 'mwalimu_goals',
-  'mwalimu_discussions', 'mwalimu_current_lesson', 'mwalimu_notifications_state',
-  'mwalimu_assessment',
+  'mwalimu_learning_progress', 'mwalimu_activity', 'mwalimu_tools_used',
+  'mwalimu_journal', 'mwalimu_discussions', 'mwalimu_current_lesson',
+  'mwalimu_notifications_state', 'mwalimu_assessment',
+  'mwalimu_a11y', 'mwalimu_low_bandwidth', 'mwalimu_sidebar_collapsed',
 ]
 
 function clearLocalUserData() {
@@ -65,6 +67,52 @@ function dbToProfile(row: Record<string, unknown>): TeacherProfile {
     grades:    (row.grades    as string[]) ?? [],
     cbcLevel:  ((row.cbc_level as string) ?? 'beginner') as TeacherProfile['cbcLevel'],
     completed: (row.completed as boolean) ?? false,
+  }
+}
+
+// Seed localStorage from the preference columns on the profile row.
+// Called after every successful profile load from Supabase so all
+// setting modules (a11y, accessibility, notification-center, layout)
+// read the correct user values on mount.
+function applyPrefsFromRow(row: Record<string, unknown>, userId: string, accountCreatedAt: string) {
+  // ── Accessibility settings ──────────────────────────────────
+  if (row.a11y_settings) {
+    try { localStorage.setItem('mwalimu_a11y', JSON.stringify(row.a11y_settings)) } catch {}
+    applyA11y(row.a11y_settings as A11ySettings)
+  }
+
+  // ── Low-bandwidth mode ──────────────────────────────────────
+  if (typeof row.low_bandwidth === 'boolean') {
+    try { localStorage.setItem('mwalimu_low_bandwidth', String(row.low_bandwidth)) } catch {}
+  }
+
+  // ── Sidebar collapsed ──────────────────────────────────────
+  if (typeof row.sidebar_collapsed === 'boolean') {
+    try { localStorage.setItem('mwalimu_sidebar_collapsed', String(row.sidebar_collapsed)) } catch {}
+  }
+
+  // ── Notification read/dismissed state ──────────────────────
+  // Prefer the cloud value; for returning users whose cloud value is
+  // still the default empty array, fall back to the 24 h auto-seed.
+  const cloudNotif = row.notifications_state as { read: string[]; dismissed: string[] } | null
+  const hasCloudNotifData = cloudNotif && (cloudNotif.read.length > 0 || cloudNotif.dismissed.length > 0)
+
+  if (hasCloudNotifData) {
+    try { localStorage.setItem('mwalimu_notifications_state', JSON.stringify(cloudNotif)) } catch {}
+  } else if (!localStorage.getItem('mwalimu_notifications_state')) {
+    // No cloud data and no local cache — auto-seed for returning users so
+    // they are not re-shown onboarding notifications on every new device.
+    const accountAgeMs = Date.now() - new Date(accountCreatedAt).getTime()
+    if (accountAgeMs > 24 * 60 * 60 * 1000) {
+      const seeded = { read: ['welcome', 'module-1', 'assessment-cta'], dismissed: [] }
+      try { localStorage.setItem('mwalimu_notifications_state', JSON.stringify(seeded)) } catch {}
+      // Persist the seed to Supabase so it is ready on the next new device
+      const supabase = createClient()
+      supabase
+        .from('profiles')
+        .upsert({ id: userId, notifications_state: seeded, updated_at: new Date().toISOString() })
+        .then(() => {}, () => {})
+    }
   }
 }
 
@@ -92,6 +140,11 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         setUser(nextUser)
 
         if (nextUser) {
+          // Wire per-user Supabase sync for all setting modules
+          setLearningProgressUser(nextUser.id)
+          setA11yUser(nextUser.id)
+          setAccessibilityUser(nextUser.id)
+
           // Load profile from Supabase, fall back to localStorage cache when offline
           try {
             const { data } = await supabase
@@ -108,6 +161,8 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
               setProfileState(p)
               localStorage.setItem(PROFILE_KEY, JSON.stringify(p))
               if (row.lang === 'en' || row.lang === 'sw') setLangState(row.lang as Lang)
+              // Apply all preference columns to localStorage/DOM
+              applyPrefsFromRow(row, nextUser.id, nextUser.created_at)
             } else {
               // Cloud has no row or an incomplete row — prefer localStorage cache
               const local = localStorage.getItem(PROFILE_KEY)
@@ -132,6 +187,8 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
                   )
                 }
               }
+              // Still try to apply prefs from partial row (may have non-profile pref columns)
+              if (row) applyPrefsFromRow(row, nextUser.id, nextUser.created_at)
             }
           } catch {
             const local = localStorage.getItem(PROFILE_KEY)
@@ -144,21 +201,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
           // Sync streak activity and tools from Supabase → localStorage (background)
           syncActivityFromSupabase(nextUser.id).catch(() => {})
           syncToolsUsedFromSupabase(nextUser.id).catch(() => {})
-          // Wire learning progress cloud sync and load from cloud
-          setLearningProgressUser(nextUser.id)
           loadProgressFromCloud(nextUser.id).catch(() => {})
-
-          // For returning users on a new device: pre-seed notification read state so
-          // onboarding seed notifications don't reappear as unread every new device.
-          if (!localStorage.getItem('mwalimu_notifications_state') && nextUser.created_at) {
-            const accountAgeMs = Date.now() - new Date(nextUser.created_at).getTime()
-            if (accountAgeMs > 24 * 60 * 60 * 1000) {
-              localStorage.setItem('mwalimu_notifications_state', JSON.stringify({
-                read: ['welcome', 'module-1', 'assessment-cta'],
-                dismissed: [],
-              }))
-            }
-          }
         } else {
           setProfileState(null)
         }
@@ -226,6 +269,8 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const signOut = useCallback(async () => {
     await supabase.auth.signOut()
     setLearningProgressUser(null)
+    setA11yUser(null)
+    setAccessibilityUser(null)
     clearLocalUserData()
     clearProfile()
   }, [clearProfile, supabase])

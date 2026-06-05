@@ -1,6 +1,14 @@
 // Low-bandwidth mode + audio lesson helpers
 
+import { createClient } from '@/lib/supabase/client'
+
 const LBW_KEY = 'mwalimu_low_bandwidth'
+
+let _userId: string | null = null
+
+export function setAccessibilityUser(userId: string | null) {
+  _userId = userId
+}
 
 export function getLowBandwidth(): boolean {
   if (typeof window === 'undefined') return false
@@ -12,6 +20,13 @@ export function setLowBandwidth(on: boolean): void {
   localStorage.setItem(LBW_KEY, on ? 'true' : 'false')
   // Dispatch a storage event so other tabs can react
   window.dispatchEvent(new Event('mwalimu-lbw-change'))
+  if (_userId) {
+    const supabase = createClient()
+    supabase
+      .from('profiles')
+      .upsert({ id: _userId, low_bandwidth: on, updated_at: new Date().toISOString() })
+      .then(() => {}, () => {})
+  }
 }
 
 // ── Speech synthesis ──────────────────────────────────────────

@@ -7,6 +7,7 @@ import { SidebarNav } from '@/components/sidebar-nav'
 import { MobileBottomNav } from '@/components/mobile-bottom-nav'
 import { OfflineIndicator } from '@/components/offline-indicator'
 import { useProfile } from '@/context/profile-context'
+import { createClient } from '@/lib/supabase/client'
 
 const COLLAPSE_KEY = 'mwalimu_sidebar_collapsed'
 
@@ -38,9 +39,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     setSidebarCollapsed(prev => {
       const next = !prev
       try { localStorage.setItem(COLLAPSE_KEY, String(next)) } catch {}
+      if (user) {
+        const supabase = createClient()
+        supabase
+          .from('profiles')
+          .upsert({ id: user.id, sidebar_collapsed: next, updated_at: new Date().toISOString() })
+          .then(() => {}, () => {})
+      }
       return next
     })
-  }, [])
+  }, [user])
 
   // Auth loading spinner
   if (authLoading) {

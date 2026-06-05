@@ -1,10 +1,12 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Bell, X, BookOpen, Award, MessageSquare, Megaphone, Check, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { createClient } from '@/lib/supabase/client'
+import { useProfile } from '@/context/profile-context'
 
 type NotificationType = 'course' | 'achievement' | 'community' | 'announcement'
 
@@ -92,11 +94,22 @@ export function NotificationCenter() {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const dropdownRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
+  const { user } = useProfile()
 
   // Load persisted state once on mount
   useEffect(() => {
     setNotifications(buildNotifications(loadState()))
   }, [])
+
+  // Fire-and-forget: write notification state to profiles.notifications_state
+  const persistToCloud = useCallback((state: NotifState) => {
+    if (!user) return
+    const supabase = createClient()
+    supabase
+      .from('profiles')
+      .upsert({ id: user.id, notifications_state: state, updated_at: new Date().toISOString() })
+      .then(() => {}, () => {})
+  }, [user])
 
   const unreadCount = notifications.filter(n => !n.read).length
 
@@ -123,6 +136,7 @@ export function NotificationCenter() {
     if (!state.read.includes(id)) {
       state.read = [...state.read, id]
       saveState(state)
+      persistToCloud(state)
     }
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n))
   }
@@ -132,6 +146,7 @@ export function NotificationCenter() {
     const unreadIds = notifications.filter(n => !n.read).map(n => n.id)
     state.read = [...new Set([...state.read, ...unreadIds])]
     saveState(state)
+    persistToCloud(state)
     setNotifications(prev => prev.map(n => ({ ...n, read: true })))
   }
 
@@ -140,6 +155,7 @@ export function NotificationCenter() {
     if (!state.dismissed.includes(id)) {
       state.dismissed = [...state.dismissed, id]
       saveState(state)
+      persistToCloud(state)
     }
     setNotifications(prev => prev.filter(n => n.id !== id))
   }
@@ -148,6 +164,7 @@ export function NotificationCenter() {
     const state = loadState()
     state.dismissed = [...new Set([...state.dismissed, ...notifications.map(n => n.id)])]
     saveState(state)
+    persistToCloud(state)
     setNotifications([])
   }
 
