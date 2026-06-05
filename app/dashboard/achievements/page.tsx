@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { BackButton } from '@/components/back-button'
 import { computeBadges, getBadgeInput, type BadgeStatus } from '@/lib/streak'
+import { useProfile } from '@/context/profile-context'
 import {
   Trophy, BookOpen, BookMarked, GraduationCap, Flame, Calendar,
   PenLine, Users, Wand2, FlaskConical, Heart, Globe, Star, Lock, Check,
@@ -113,6 +114,7 @@ function BadgeCard({ badge, progress }: { badge: BadgeStatus; progress: BadgePro
 }
 
 export default function AchievementsPage() {
+  const { syncReady } = useProfile()
   const [badges, setBadges]     = useState<BadgeStatus[]>([])
   const [badgeInput, setBadgeInput] = useState<ReturnType<typeof getBadgeInput> | null>(null)
   const [mounted, setMounted]   = useState(false)
@@ -122,7 +124,7 @@ export default function AchievementsPage() {
     setBadgeInput(input)
     setBadges(computeBadges(input))
     setMounted(true)
-  }, [])
+  }, [syncReady])
 
   const earned    = badges.filter(b => b.earned)
   const notEarned = badges.filter(b => !b.earned)

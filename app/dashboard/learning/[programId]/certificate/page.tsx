@@ -12,7 +12,7 @@ import { Award, Printer, Share2, CheckCircle2, GraduationCap, Lock } from 'lucid
 
 export default function CertificatePage() {
   const params  = useParams<{ programId: string }>()
-  const { profile } = useProfile()
+  const { profile, syncReady } = useProfile()
   const program = getProgramById(params.programId)
 
   const [progress, setProgress] = useState({ completedLessons: [] as string[], reflections: {} as Record<string, string>, certificateEarnedAt: undefined as string | undefined, postAssessment: undefined as { score: number; total: number } | undefined })
@@ -30,7 +30,7 @@ export default function CertificatePage() {
       setProgress({ ...p as typeof progress, certificateEarnedAt: new Date().toLocaleDateString() })
     }
     setMounted(true)
-  }, [program])
+  }, [program, syncReady])
 
   if (!program) return <div className="p-8 text-muted-foreground">Program not found.</div>
 
