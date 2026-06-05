@@ -12,7 +12,7 @@ import { getStreak, recordActivity, getBadgeInput, computeBadges } from '@/lib/s
 import { useProfile } from '@/context/profile-context'
 
 export default function DashboardPage() {
-  const { profile, user } = useProfile()
+  const { profile, user, mounted } = useProfile()
   const [streak, setStreak] = useState({ current: 0, longest: 0, totalDays: 0, weekDays: Array(7).fill(false) as boolean[] })
   const [badgesEarned, setBadgesEarned] = useState(0)
   const [completedLessons, setCompletedLessons] = useState(0)
@@ -22,7 +22,12 @@ export default function DashboardPage() {
   const [showPaymentSuccess, setShowPaymentSuccess] = useState(false)
 
   useEffect(() => {
-    recordActivity('login', user?.id)
+    // mounted becomes true only after profile-context has finished syncing all
+    // cloud data into localStorage — so reading here always gets real values,
+    // not the empty-cache zeros that appear immediately after sign-in.
+    if (!mounted || !user) return
+
+    recordActivity('login', user.id)
     const s = getStreak()
     setStreak(s)
     const input = getBadgeInput()
@@ -44,7 +49,7 @@ export default function DashboardPage() {
 
     const params = new URLSearchParams(window.location.search)
     if (params.get('payment') === 'success') setShowPaymentSuccess(true)
-  }, [])
+  }, [mounted, user])
 
   const teacherName = profile?.name && profile.name !== 'Teacher' ? profile.name : 'Teacher'
   const hour = new Date().getHours()

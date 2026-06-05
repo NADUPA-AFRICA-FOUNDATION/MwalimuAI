@@ -200,10 +200,19 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
           const storedLang = localStorage.getItem(LANG_KEY) as Lang | null
           if (storedLang === 'en' || storedLang === 'sw') setLangState(storedLang)
 
-          // Sync streak activity and tools from Supabase → localStorage (background)
-          syncActivityFromSupabase(nextUser.id).catch(() => {})
-          syncToolsUsedFromSupabase(nextUser.id).catch(() => {})
-          loadProgressFromCloud(nextUser.id).catch(() => {})
+          // Auth is resolved — let the layout render and the auth guard run.
+          // mounted stays false until the cloud syncs below finish so that any
+          // page reading localStorage (e.g. dashboard stats) doesn't read stale
+          // empty data before the sync has populated the cache.
+          setAuthLoading(false)
+
+          // Await all three syncs so localStorage is fully populated before
+          // mounted flips to true and the dashboard re-reads its stats.
+          await Promise.allSettled([
+            syncActivityFromSupabase(nextUser.id),
+            syncToolsUsedFromSupabase(nextUser.id),
+            loadProgressFromCloud(nextUser.id),
+          ])
         } else {
           // Session gone (sign-out or expiry) — null out all module user IDs
           // so subsequent writes don't attempt authenticated Supabase calls
@@ -212,9 +221,9 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
           setA11yUser(null)
           setAccessibilityUser(null)
           setProfileState(null)
+          setAuthLoading(false)
         }
 
-        setAuthLoading(false)
         setMounted(true)
       }
     )
