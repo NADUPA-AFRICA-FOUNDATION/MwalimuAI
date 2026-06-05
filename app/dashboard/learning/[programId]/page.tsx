@@ -30,7 +30,7 @@ const SIMULATED_COHORT = [
 export default function ProgramPage() {
   const params = useParams<{ programId: string }>()
   const router  = useRouter()
-  const { profile } = useProfile()
+  const { profile, syncReady } = useProfile()
   const program = getProgramById(params.programId)
 
   const [progress, setProgress]   = useState<ProgramProgress>({ completedLessons: [], reflections: {} })
@@ -100,7 +100,7 @@ This offline copy is for personal study only. Content aligned with KICD CBC fram
     setProgress(p)
     setCohortJoined(!!p.cohortJoined)
     setMounted(true)
-  }, [program])
+  }, [program, syncReady])
 
   if (!program) return <div className="p-8 text-muted-foreground">Program not found.</div>
   if (!program.available) {

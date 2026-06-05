@@ -36,7 +36,7 @@ const TABS: { id: Tab; label: string; icon: React.FC<{ className?: string }> }[]
 export default function LessonPage() {
   const params = useParams<{ programId: string; moduleId: string; lessonId: string }>()
   const router = useRouter()
-  const { profile, lang, user } = useProfile()
+  const { profile, lang, user, syncReady } = useProfile()
 
   const program = getProgramById(params.programId)
   const found   = program ? getLessonById(program, params.moduleId, params.lessonId) : null
@@ -102,6 +102,15 @@ export default function LessonPage() {
     } catch {}
     setMounted(true)
   }, [program, mod, lesson])
+
+  // Re-read progress after cloud sync so lesson completion shows correctly.
+  // Reflection only updates if the user hasn't typed anything yet.
+  useEffect(() => {
+    if (!syncReady || !program || !mod || !lesson) return
+    const p = getProgress(program.id)
+    setProgress(p)
+    setReflection(prev => prev || (p.reflections[`${mod.id}/${lesson.id}`] ?? ''))
+  }, [syncReady, program, mod, lesson])
 
   if (!program || !mod || !lesson) {
     return <div className="p-8 text-muted-foreground">Lesson not found.</div>

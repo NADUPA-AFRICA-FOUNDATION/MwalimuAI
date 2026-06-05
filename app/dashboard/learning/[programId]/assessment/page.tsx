@@ -5,6 +5,7 @@ import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { getProgramById } from '@/lib/learning-paths-data'
 import { getProgress, saveAssessment, earnCertificate, isProgramComplete } from '@/lib/learning-progress'
+import { useProfile } from '@/context/profile-context'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { BackButton } from '@/components/back-button'
@@ -14,6 +15,7 @@ export default function AssessmentPage() {
   const params = useParams<{ programId: string }>()
   const searchParams = useSearchParams()
   const router = useRouter()
+  const { syncReady } = useProfile()
   const type = (searchParams.get('type') ?? 'pre') as 'pre' | 'post'
 
   const program = getProgramById(params.programId)
@@ -30,7 +32,7 @@ export default function AssessmentPage() {
     const p = getProgress(program.id)
     const ex = p[type === 'pre' ? 'preAssessment' : 'postAssessment']
     if (ex) setExisting(ex)
-  }, [program, type])
+  }, [program, type, syncReady])
 
   if (!program) return <div className="p-8 text-muted-foreground">Program not found.</div>
   if (questions.length === 0) return <div className="p-8 text-muted-foreground">No assessment available.</div>

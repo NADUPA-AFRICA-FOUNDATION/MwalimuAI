@@ -18,7 +18,7 @@ import {
 
 export default function AssignmentPage() {
   const params  = useParams<{ programId: string }>()
-  const { lang, profile } = useProfile()
+  const { lang, profile, syncReady } = useProfile()
   const program = getProgramById(params.programId)
   const assignment = program?.assignment
 
@@ -40,7 +40,7 @@ export default function AssignmentPage() {
       setSubmitted(true)
     }
     setMounted(true)
-  }, [program])
+  }, [program, syncReady])
 
   if (!program || !assignment) return <div className="p-8 text-muted-foreground">Assignment not found.</div>
 
