@@ -74,6 +74,27 @@ export async function syncActivityFromSupabase(userId: string): Promise<void> {
   } catch {}
 }
 
+/**
+ * Pull tools_used from Supabase into localStorage so badge counts are accurate on new devices.
+ * Called once after sign-in.
+ */
+export async function syncToolsUsedFromSupabase(userId: string): Promise<void> {
+  if (typeof window === 'undefined') return
+  try {
+    const supabase = createClient()
+    const { data } = await supabase
+      .from('tools_used')
+      .select('tool_id')
+      .eq('user_id', userId)
+
+    if (!data || data.length === 0) return
+    const raw = localStorage.getItem(TOOLS_KEY)
+    const local: string[] = raw ? JSON.parse(raw) : []
+    const merged = [...new Set([...local, ...data.map(r => r.tool_id as string)])]
+    localStorage.setItem(TOOLS_KEY, JSON.stringify(merged))
+  } catch {}
+}
+
 export function recordToolUsed(toolId: string, userId?: string) {
   if (typeof window === 'undefined') return
   try {

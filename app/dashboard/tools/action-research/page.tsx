@@ -30,7 +30,7 @@ interface StepData {
 }
 
 export default function ActionResearchPage() {
-  const { lang } = useProfile()
+  const { lang, user } = useProfile()
 
   const [currentStep, setCurrentStep] = useState(1)
   const [stepData, setStepData]       = useState<Record<number, StepData>>(
@@ -62,7 +62,7 @@ export default function ActionResearchPage() {
 
   const generate = async () => {
     if (!data.input.trim()) return
-    recordToolUsed('action-research')
+    recordToolUsed('action-research', user?.id)
     setIsLoading(true)
     setError(null)
     setStepData(prev => ({ ...prev, [currentStep]: { ...prev[currentStep], output: '' } }))

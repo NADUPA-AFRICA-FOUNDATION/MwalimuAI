@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { BackButton } from '@/components/back-button'
 import { BookOpen, Wand2, Copy, Check, AlertCircle, RefreshCw, Printer } from 'lucide-react'
 import { recordToolUsed } from '@/lib/streak'
+import { useProfile } from '@/context/profile-context'
 import { MarkdownRenderer } from '@/components/markdown-renderer'
 import { printPDF } from '@/lib/print-pdf'
 
@@ -39,6 +40,7 @@ Please generate a complete, practical CBC lesson plan for a Kenyan classroom.`
 }
 
 export default function LessonPlanPage() {
+  const { user } = useProfile()
   const [form, setForm] = useState({
     subject: '', grade: '', strand: '', subStrand: '', topic: '', duration: '40 minutes', level: 'Mixed ability',
   })
@@ -74,7 +76,7 @@ export default function LessonPlanPage() {
 
   const generate = async () => {
     if (!isValid) return
-    recordToolUsed('lesson-plan')
+    recordToolUsed('lesson-plan', user?.id)
     setIsLoading(true)
     setOutput('')
     setError(null)

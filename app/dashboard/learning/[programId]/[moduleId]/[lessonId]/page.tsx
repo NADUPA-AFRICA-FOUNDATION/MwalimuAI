@@ -35,7 +35,7 @@ const TABS: { id: Tab; label: string; icon: React.FC<{ className?: string }> }[]
 export default function LessonPage() {
   const params = useParams<{ programId: string; moduleId: string; lessonId: string }>()
   const router = useRouter()
-  const { profile, lang } = useProfile()
+  const { profile, lang, user } = useProfile()
 
   const program = getProgramById(params.programId)
   const found   = program ? getLessonById(program, params.moduleId, params.lessonId) : null
@@ -84,7 +84,7 @@ export default function LessonPage() {
 
   const handleComplete = () => {
     completeLesson(program.id, mod.id, lesson.id)
-    recordActivity('lesson')
+    recordActivity('lesson', user?.id)
     setProgress(getProgress(program.id))
     if (nextLesson) {
       router.push(`/dashboard/learning/${program.id}/${nextLesson.moduleId}/${nextLesson.lessonId}`)

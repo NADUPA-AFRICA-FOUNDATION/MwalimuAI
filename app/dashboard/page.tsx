@@ -12,7 +12,7 @@ import { getStreak, recordActivity, getBadgeInput, computeBadges } from '@/lib/s
 import { useProfile } from '@/context/profile-context'
 
 export default function DashboardPage() {
-  const { profile } = useProfile()
+  const { profile, user } = useProfile()
   const [streak, setStreak] = useState({ current: 0, longest: 0, totalDays: 0, weekDays: Array(7).fill(false) as boolean[] })
   const [badgesEarned, setBadgesEarned] = useState(0)
   const [completedLessons, setCompletedLessons] = useState(0)
@@ -22,7 +22,7 @@ export default function DashboardPage() {
   const [showPaymentSuccess, setShowPaymentSuccess] = useState(false)
 
   useEffect(() => {
-    recordActivity('login')
+    recordActivity('login', user?.id)
     const s = getStreak()
     setStreak(s)
     const input = getBadgeInput()

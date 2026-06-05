@@ -5,7 +5,7 @@ import {
 } from 'react'
 import { type User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
-import { syncActivityFromSupabase } from '@/lib/streak'
+import { syncActivityFromSupabase, syncToolsUsedFromSupabase } from '@/lib/streak'
 import { setLearningProgressUser, loadProgressFromCloud } from '@/lib/learning-progress'
 import { type Lang } from '@/lib/i18n'
 
@@ -46,7 +46,7 @@ const ALL_USER_KEYS = [
   PROFILE_KEY, LANG_KEY,
   'mwalimu_community', 'mwalimu_learning_progress', 'mwalimu_activity',
   'mwalimu_tools_used', 'mwalimu_journal', 'mwalimu_goals',
-  'mwalimu_discussions', 'mwalimu_current_lesson',
+  'mwalimu_discussions', 'mwalimu_current_lesson', 'mwalimu_notifications_state',
 ]
 
 function clearLocalUserData() {
@@ -140,11 +140,24 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
           const storedLang = localStorage.getItem(LANG_KEY) as Lang | null
           if (storedLang === 'en' || storedLang === 'sw') setLangState(storedLang)
 
-          // Sync streak activity from Supabase → localStorage (background)
+          // Sync streak activity and tools from Supabase → localStorage (background)
           syncActivityFromSupabase(nextUser.id).catch(() => {})
+          syncToolsUsedFromSupabase(nextUser.id).catch(() => {})
           // Wire learning progress cloud sync and load from cloud
           setLearningProgressUser(nextUser.id)
           loadProgressFromCloud(nextUser.id).catch(() => {})
+
+          // For returning users on a new device: pre-seed notification read state so
+          // onboarding seed notifications don't reappear as unread every new device.
+          if (!localStorage.getItem('mwalimu_notifications_state') && nextUser.created_at) {
+            const accountAgeMs = Date.now() - new Date(nextUser.created_at).getTime()
+            if (accountAgeMs > 24 * 60 * 60 * 1000) {
+              localStorage.setItem('mwalimu_notifications_state', JSON.stringify({
+                read: ['welcome', 'module-1', 'assessment-cta'],
+                dismissed: [],
+              }))
+            }
+          }
         } else {
           setProfileState(null)
         }
