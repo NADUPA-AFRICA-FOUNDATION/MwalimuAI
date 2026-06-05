@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { BackButton } from '@/components/back-button'
 import { useProfile } from '@/context/profile-context'
 import { createClient } from '@/lib/supabase/client'
+import { recordCommunityPost } from '@/lib/streak'
 import {
   MessageCircle, Heart, Search, Plus, X, ChevronDown,
   ChevronUp, Send, Users, Loader2,
@@ -202,6 +203,7 @@ export default function CommunityPage() {
 
     if (error) { setPostError(error.message); return }
 
+    recordCommunityPost()
     setNewForm({ title: '', content: '', category: '' })
     setShowNew(false)
 

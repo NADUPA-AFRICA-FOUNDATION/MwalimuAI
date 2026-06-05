@@ -5,7 +5,7 @@ import {
 } from 'react'
 import { type User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
-import { syncActivityFromSupabase, syncToolsUsedFromSupabase } from '@/lib/streak'
+import { syncActivityFromSupabase, syncToolsUsedFromSupabase, syncCommunityPostsFromSupabase } from '@/lib/streak'
 import { setLearningProgressUser, loadProgressFromCloud } from '@/lib/learning-progress'
 import { setA11yUser, applyA11y, type A11ySettings } from '@/lib/a11y-settings'
 import { setAccessibilityUser } from '@/lib/accessibility'
@@ -211,6 +211,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
             syncActivityFromSupabase(nextUser.id),
             syncToolsUsedFromSupabase(nextUser.id),
             loadProgressFromCloud(nextUser.id),
+            syncCommunityPostsFromSupabase(nextUser.id),
           ]).then(() => setSyncReady(true))
         } else {
           // Session gone (sign-out or expiry) — null out all module user IDs

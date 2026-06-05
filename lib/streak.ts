@@ -5,8 +5,9 @@
 import { createClient } from '@/lib/supabase/client'
 import { trackWrite } from '@/lib/write-queue'
 
-const ACTIVITY_KEY = 'mwalimu_activity'
-const TOOLS_KEY    = 'mwalimu_tools_used'
+const ACTIVITY_KEY        = 'mwalimu_activity'
+const TOOLS_KEY           = 'mwalimu_tools_used'
+const COMMUNITY_COUNT_KEY = 'mwalimu_community_post_count'
 
 export type ActivityType = 'lesson' | 'tool' | 'journal' | 'community' | 'login' | 'assessment'
 
@@ -78,6 +79,28 @@ export async function syncActivityFromSupabase(userId: string): Promise<void> {
  * Pull tools_used from Supabase into localStorage so badge counts are accurate on new devices.
  * Called once after sign-in.
  */
+export async function syncCommunityPostsFromSupabase(userId: string): Promise<void> {
+  if (typeof window === 'undefined') return
+  try {
+    const supabase = createClient()
+    const { count } = await supabase
+      .from('community_posts')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+    if (typeof count === 'number') {
+      localStorage.setItem(COMMUNITY_COUNT_KEY, String(count))
+    }
+  } catch {}
+}
+
+export function recordCommunityPost() {
+  if (typeof window === 'undefined') return
+  try {
+    const current = parseInt(localStorage.getItem(COMMUNITY_COUNT_KEY) ?? '0', 10)
+    localStorage.setItem(COMMUNITY_COUNT_KEY, String(current + 1))
+  } catch {}
+}
+
 export async function syncToolsUsedFromSupabase(userId: string): Promise<void> {
   if (typeof window === 'undefined') return
   try {
@@ -256,13 +279,7 @@ export function getBadgeInput(): BadgeInput {
 
   let communityPosts = 0
   try {
-    const profileRaw   = localStorage.getItem('mwalimu_profile')
-    const communityRaw = localStorage.getItem('mwalimu_community')
-    const profile = profileRaw ? JSON.parse(profileRaw) as { name?: string } : null
-    if (communityRaw && profile?.name) {
-      communityPosts = (JSON.parse(communityRaw) as Array<{ author: string }>)
-        .filter(p => p.author === profile.name).length
-    }
+    communityPosts = parseInt(localStorage.getItem(COMMUNITY_COUNT_KEY) ?? '0', 10)
   } catch {}
 
   const toolsUsed = getToolsUsedCount()
