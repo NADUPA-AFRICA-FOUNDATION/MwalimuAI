@@ -43,12 +43,20 @@ export async function printPDF({ title, subtitle, meta, content, type = 'default
   const body = mdToHtml(content, cfg)
 
   // ── 1. Build hidden off-screen container ──────────────────────────────────
+  // Must use position:absolute with positive coordinates — html2canvas crops
+  // using getBoundingClientRect(), and Canvas APIs silently return blank pixels
+  // for negative coordinates (position:fixed left:-9999px was producing blank PDFs).
   const container = document.createElement('div')
   container.setAttribute('aria-hidden', 'true')
+  const docBottom = Math.max(
+    document.body.scrollHeight,
+    document.documentElement.scrollHeight,
+    window.scrollY + window.innerHeight,
+  ) + 50
   Object.assign(container.style, {
-    position:      'fixed',
-    top:           '0',
-    left:          '-9999px',
+    position:      'absolute',
+    top:           `${docBottom}px`,
+    left:          '0',
     width:         '820px',
     background:    '#ffffff',
     zIndex:        '-1',
@@ -80,8 +88,10 @@ export async function printPDF({ title, subtitle, meta, content, type = 'default
       logging:         false,
       backgroundColor: '#ffffff',
       windowWidth:     820,
-      scrollX:         0,
-      scrollY:         0,
+      // Standard scroll compensation: tells html2canvas the current page scroll
+      // so it can correctly locate absolutely-positioned off-screen elements.
+      scrollX:         -window.scrollX,
+      scrollY:         -window.scrollY,
     })
 
     // ── 4. Slice canvas into A4 pages and build PDF ───────────────────────
