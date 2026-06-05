@@ -28,7 +28,7 @@ interface Reply {
 interface Post {
   id: string
   title: string
-  body: string
+  content: string
   category: string
   author: string
   initials: string
@@ -59,7 +59,7 @@ function dbToPost(row: any): Post {
   return {
     id:        row.id,
     title:     row.title       ?? '',
-    body:      row.body        ?? '',
+    content:   row.content     ?? '',
     category:  row.category    ?? '',
     author:    row.author_name ?? 'Teacher',
     initials:  mkInitials(row.author_name ?? 'T'),
@@ -100,7 +100,7 @@ export default function CommunityPage() {
   const [replyBoxes, setReplyBoxes]   = useState<Record<string, string>>({})
   const [replyErrors, setReplyErrors] = useState<Record<string, string>>({})
   const replyInputRefs                = useRef<Record<string, HTMLInputElement | null>>({})
-  const [newForm, setNewForm]         = useState({ title: '', body: '', category: '' })
+  const [newForm, setNewForm]         = useState({ title: '', content: '', category: '' })
   const [postError, setPostError]     = useState<string | null>(null)
 
   const authorName     = profile?.name && profile.name !== 'Teacher'
@@ -126,7 +126,7 @@ export default function CommunityPage() {
     const matchCat    = filter === 'All' || p.category === filter
     const matchSearch = !search
       || p.title.toLowerCase().includes(search.toLowerCase())
-      || p.body.toLowerCase().includes(search.toLowerCase())
+      || p.content.toLowerCase().includes(search.toLowerCase())
     return matchCat && matchSearch
   })
 
@@ -183,7 +183,7 @@ export default function CommunityPage() {
   }
 
   const submitPost = async () => {
-    if (!newForm.title.trim() || !newForm.body.trim() || !newForm.category || !userId) return
+    if (!newForm.title.trim() || !newForm.content.trim() || !newForm.category || !userId) return
     setPostError(null)
 
     const { data: inserted, error } = await supabase
@@ -191,7 +191,7 @@ export default function CommunityPage() {
       .insert({
         user_id:     userId,
         title:       newForm.title.trim(),
-        body:        newForm.body.trim(),
+        content:     newForm.content.trim(),
         category:    newForm.category,
         author_name: authorName,
         county:      profile?.county ?? '',
@@ -202,7 +202,7 @@ export default function CommunityPage() {
 
     if (error) { setPostError(error.message); return }
 
-    setNewForm({ title: '', body: '', category: '' })
+    setNewForm({ title: '', content: '', category: '' })
     setShowNew(false)
 
     if (inserted) {
@@ -260,7 +260,7 @@ export default function CommunityPage() {
           <div className="space-y-1.5">
             <Label htmlFor="post-body" className="text-sm font-medium">Your message *</Label>
             <Textarea id="post-body" placeholder="Share context, ask a question, or start the conversation…"
-              value={newForm.body} onChange={e => setNewForm(f => ({ ...f, body: e.target.value }))}
+              value={newForm.content} onChange={e => setNewForm(f => ({ ...f, content: e.target.value }))}
               className="rounded-xl resize-none" rows={4} />
           </div>
           <div className="space-y-1.5">
@@ -280,7 +280,7 @@ export default function CommunityPage() {
             </p>
           )}
           <Button onClick={submitPost}
-            disabled={!newForm.title.trim() || !newForm.body.trim() || !newForm.category || !userId}
+            disabled={!newForm.title.trim() || !newForm.content.trim() || !newForm.category || !userId}
             className="w-full rounded-xl font-semibold gap-2">
             <Send className="w-4 h-4" /> Post Discussion
           </Button>
@@ -340,7 +340,7 @@ export default function CommunityPage() {
                       </div>
                       <h3 className="font-semibold text-sm leading-snug mb-1">{post.title}</h3>
                       {!isOpen && (
-                        <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">{post.body}</p>
+                        <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">{post.content}</p>
                       )}
                     </div>
                     <div className="shrink-0">
@@ -379,7 +379,7 @@ export default function CommunityPage() {
                 {/* Expanded */}
                 {isOpen && (
                   <div className="border-t border-border/40 px-5 pb-5">
-                    <p className="text-sm text-muted-foreground leading-relaxed py-4">{post.body}</p>
+                    <p className="text-sm text-muted-foreground leading-relaxed py-4">{post.content}</p>
 
                     {post.replies.length > 0 && (
                       <div className="space-y-3 mb-4">
