@@ -43,20 +43,39 @@ const ProfileContext = createContext<ProfileContextType>({
   lang: 'en', setLang: () => {}, toggleLang: () => {},
 })
 
-const PROFILE_KEY = 'mwalimu_profile'
-const LANG_KEY    = 'mwalimu_lang'
+const PROFILE_KEY  = 'mwalimu_profile'
+const LANG_KEY     = 'mwalimu_lang'
+const USER_ID_KEY  = 'mwalimu_user_id'
 
+// All keys that belong to a specific user — cleared when a DIFFERENT user signs in.
 const ALL_USER_KEYS = [
-  PROFILE_KEY, LANG_KEY,
+  PROFILE_KEY, LANG_KEY, USER_ID_KEY,
   'mwalimu_learning_progress', 'mwalimu_activity', 'mwalimu_tools_used',
+  'mwalimu_community_post_count',
   'mwalimu_journal', 'mwalimu_discussions', 'mwalimu_current_lesson',
   'mwalimu_notifications_state', 'mwalimu_assessment',
+  'mwalimu_a11y', 'mwalimu_low_bandwidth', 'mwalimu_sidebar_collapsed',
+]
+
+// Keys that are session/preference-only and safe to clear on every sign-out.
+// Progress keys (learning_progress, activity, tools_used, journal, discussions)
+// are intentionally omitted so same-user re-login keeps local data as a fallback
+// in case any Supabase writes were lost.
+const SESSION_KEYS = [
+  PROFILE_KEY, LANG_KEY,
+  'mwalimu_current_lesson', 'mwalimu_assessment',
+  'mwalimu_notifications_state',
   'mwalimu_a11y', 'mwalimu_low_bandwidth', 'mwalimu_sidebar_collapsed',
 ]
 
 function clearLocalUserData() {
   if (typeof window === 'undefined') return
   ALL_USER_KEYS.forEach(key => { try { localStorage.removeItem(key) } catch {} })
+}
+
+function clearSessionData() {
+  if (typeof window === 'undefined') return
+  SESSION_KEYS.forEach(key => { try { localStorage.removeItem(key) } catch {} })
 }
 
 // Map Supabase snake_case columns → TeacherProfile camelCase
@@ -146,6 +165,17 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         if (nextUser) {
           // Reset syncReady so the dashboard waits for fresh cloud data
           setSyncReady(false)
+
+          // If a DIFFERENT user is signing in, wipe the previous user's data.
+          // Same-user re-login keeps local progress as a fallback (cloud sync
+          // will overwrite with authoritative data once syncReady fires).
+          if (typeof window !== 'undefined') {
+            const prevId = localStorage.getItem(USER_ID_KEY)
+            if (prevId && prevId !== nextUser.id) {
+              clearLocalUserData()
+            }
+            try { localStorage.setItem(USER_ID_KEY, nextUser.id) } catch {}
+          }
 
           // Wire per-user Supabase sync for all setting modules
           setLearningProgressUser(nextUser.id)
@@ -288,15 +318,22 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     // Drain all in-flight writes before invalidating the session token.
-    // flushWrites() resolves when every tracked promise settles (or after 3s).
     await flushWrites()
+    // Stamp the user ID so same-user re-login recognises the local cache
+    // as belonging to them and skips the full data wipe.
+    if (user && typeof window !== 'undefined') {
+      try { localStorage.setItem(USER_ID_KEY, user.id) } catch {}
+    }
     await supabase.auth.signOut()
     setLearningProgressUser(null)
     setA11yUser(null)
     setAccessibilityUser(null)
-    clearLocalUserData()
+    // Only clear session/preference data. Progress keys (learning_progress,
+    // activity, tools_used, etc.) are preserved so re-login can use them as
+    // a local fallback even if Supabase writes were lost.
+    clearSessionData()
     clearProfile()
-  }, [clearProfile, supabase])
+  }, [user, clearProfile, supabase])
 
   return (
     <ProfileContext.Provider value={{
