@@ -10,6 +10,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { BackButton } from '@/components/back-button'
 import { MessageSquare, Wand2, Copy, Check, AlertCircle, RefreshCw } from 'lucide-react'
+import { saveToolOutput, type ToolOutput } from '@/lib/tool-history'
+import { ToolHistoryPanel } from '@/components/tool-history-panel'
 
 const SUBJECTS = [
   'English', 'Kiswahili', 'Mathematics', 'Science & Technology',
@@ -53,6 +55,7 @@ export default function ReportCardPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [historyKey, setHistoryKey] = useState(0)
   const outputRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -85,11 +88,25 @@ export default function ReportCardPage() {
       const reader = res.body?.getReader()
       if (!reader) throw new Error('No response stream')
       const decoder = new TextDecoder()
+      let fullOutput = ''
 
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
-        setOutput(prev => prev + decoder.decode(value, { stream: true }))
+        const chunk = decoder.decode(value, { stream: true })
+        fullOutput += chunk
+        setOutput(prev => prev + chunk)
+      }
+
+      if (fullOutput && user) {
+        saveToolOutput(
+          user.id,
+          'report-card',
+          `${form.subject || 'Subject'} · ${form.grade || ''} · ${form.performance || ''}`.trim(),
+          form,
+          fullOutput,
+        )
+        setHistoryKey(k => k + 1)
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Generation failed')
@@ -102,6 +119,21 @@ export default function ReportCardPage() {
     navigator.clipboard.writeText(output)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  const restoreEntry = (entry: ToolOutput) => {
+    const i = entry.input as Partial<typeof form>
+    setForm({
+      grade:        i.grade        ?? '',
+      subject:      i.subject      ?? '',
+      performance:  i.performance  ?? '',
+      gender:       i.gender       ?? 'They/Their',
+      strengths:    i.strengths    ?? '',
+      improvements: i.improvements ?? '',
+      effort:       i.effort       ?? 'Consistent',
+    })
+    setOutput(entry.output)
+    setError(null)
   }
 
   const set = (key: keyof typeof form) => (value: string) => setForm(f => ({ ...f, [key]: value }))
@@ -292,6 +324,8 @@ export default function ReportCardPage() {
           )}
         </div>
       </div>
+
+      <ToolHistoryPanel toolId="report-card" refreshKey={historyKey} onRestore={restoreEntry} />
     </div>
   )
 }

@@ -2,6 +2,10 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { authedFetch } from '@/lib/authed-fetch'
+import { useProfile } from '@/context/profile-context'
+import { recordToolUsed } from '@/lib/streak'
+import { saveToolOutput, type ToolOutput } from '@/lib/tool-history'
+import { ToolHistoryPanel } from '@/components/tool-history-panel'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -45,6 +49,7 @@ Please provide 4–5 specific, practical strategies suited to a Kenyan CBC class
 }
 
 export default function DifferentiationPage() {
+  const { user } = useProfile()
   const [form, setForm] = useState({
     grade: '', subject: '', challenge: '', barriers: [] as string[],
   })
@@ -52,6 +57,7 @@ export default function DifferentiationPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [historyKey, setHistoryKey] = useState(0)
   const outputRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -61,6 +67,18 @@ export default function DifferentiationPage() {
   }, [output])
 
   const isValid = form.grade && form.subject && form.challenge.trim().length > 10
+
+  const restoreEntry = (entry: ToolOutput) => {
+    const i = entry.input as Partial<typeof form>
+    setForm({
+      grade:     i.grade     ?? '',
+      subject:   i.subject   ?? '',
+      challenge: i.challenge ?? '',
+      barriers:  (i.barriers as string[]) ?? [],
+    })
+    setOutput(entry.output)
+    setError(null)
+  }
 
   const toggleBarrier = (id: string) => {
     setForm(f => ({
@@ -94,14 +112,29 @@ export default function DifferentiationPage() {
         throw new Error(data.error ?? `Server error ${res.status}`)
       }
 
+      recordToolUsed('differentiation', user?.id)
       const reader = res.body?.getReader()
       if (!reader) throw new Error('No response stream')
       const decoder = new TextDecoder()
+      let fullOutput = ''
 
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
-        setOutput(prev => prev + decoder.decode(value, { stream: true }))
+        const chunk = decoder.decode(value, { stream: true })
+        fullOutput += chunk
+        setOutput(prev => prev + chunk)
+      }
+
+      if (fullOutput && user) {
+        saveToolOutput(
+          user.id,
+          'differentiation',
+          `${form.subject || 'Subject'} · ${form.grade || ''} · ${form.challenge.slice(0, 40)}`.trim(),
+          form,
+          fullOutput,
+        )
+        setHistoryKey(k => k + 1)
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Generation failed')
@@ -264,6 +297,7 @@ export default function DifferentiationPage() {
           )}
         </div>
       </div>
+      <ToolHistoryPanel toolId="differentiation" refreshKey={historyKey} onRestore={restoreEntry} />
     </div>
   )
 }

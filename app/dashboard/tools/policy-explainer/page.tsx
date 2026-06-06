@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { authedFetch } from '@/lib/authed-fetch'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -11,6 +11,8 @@ import { recordToolUsed } from '@/lib/streak'
 import { FileText, Wand2, RefreshCw, Copy, Check, AlertCircle, Printer } from 'lucide-react'
 import { MarkdownRenderer } from '@/components/markdown-renderer'
 import { printPDF } from '@/lib/print-pdf'
+import { saveToolOutput, type ToolOutput } from '@/lib/tool-history'
+import { ToolHistoryPanel } from '@/components/tool-history-panel'
 
 const EXAMPLES = [
   'TSC Teacher Performance Appraisal circular',
@@ -28,6 +30,7 @@ export default function PolicyExplainerPage() {
   const [isPrinting, setIsPrinting] = useState(false)
   const [error, setError]           = useState<string | null>(null)
   const [copied, setCopied]         = useState(false)
+  const [historyKey, setHistoryKey] = useState(0)
   const outputRef = useRef<HTMLDivElement>(null)
 
   const wordCount = policyText.trim().split(/\s+/).filter(Boolean).length
@@ -52,16 +55,32 @@ export default function PolicyExplainerPage() {
       const reader = res.body?.getReader()
       if (!reader) throw new Error('No stream')
       const decoder = new TextDecoder()
+      let fullOutput = ''
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
-        setOutput(prev => prev + decoder.decode(value, { stream: true }))
+        const chunk = decoder.decode(value, { stream: true })
+        fullOutput += chunk
+        setOutput(prev => prev + chunk)
+      }
+
+      if (fullOutput && user) {
+        const firstLine = policyText.split('\n').find(l => l.trim())?.slice(0, 80) ?? 'Policy'
+        saveToolOutput(user.id, 'policy-explainer', firstLine, { policyText }, fullOutput)
+        setHistoryKey(k => k + 1)
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Generation failed')
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const restoreEntry = (entry: ToolOutput) => {
+    const i = entry.input as { policyText?: string }
+    setPolicyText(i.policyText ?? '')
+    setOutput(entry.output)
+    setError(null)
   }
 
   const copyOutput = () => {
@@ -175,6 +194,8 @@ export default function PolicyExplainerPage() {
           )}
         </div>
       </div>
+
+      <ToolHistoryPanel toolId="policy-explainer" refreshKey={historyKey} onRestore={restoreEntry} />
     </div>
   )
 }

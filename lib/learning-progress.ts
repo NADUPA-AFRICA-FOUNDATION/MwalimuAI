@@ -106,6 +106,16 @@ export function completeLesson(programId: string, moduleId: string, lessonId: st
   cloudSync(programId, p)
 }
 
+export function uncompleteLesson(programId: string, moduleId: string, lessonId: string) {
+  const all = read()
+  const p   = all[programId] ?? { completedLessons: [], reflections: {} }
+  const key = `${moduleId}/${lessonId}`
+  p.completedLessons = p.completedLessons.filter(l => l !== key)
+  all[programId] = p
+  write(all)
+  cloudSync(programId, p)
+}
+
 export function saveReflection(programId: string, moduleId: string, lessonId: string, text: string) {
   const all = read()
   const p   = all[programId] ?? { completedLessons: [], reflections: {} }

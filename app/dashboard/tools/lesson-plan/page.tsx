@@ -12,6 +12,8 @@ import { recordToolUsed } from '@/lib/streak'
 import { useProfile } from '@/context/profile-context'
 import { MarkdownRenderer } from '@/components/markdown-renderer'
 import { printPDF } from '@/lib/print-pdf'
+import { saveToolOutput, type ToolOutput } from '@/lib/tool-history'
+import { ToolHistoryPanel } from '@/components/tool-history-panel'
 
 const SUBJECTS = [
   'English', 'Kiswahili', 'Mathematics', 'Science & Technology',
@@ -49,6 +51,7 @@ export default function LessonPlanPage() {
   const [isPrinting, setIsPrinting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [historyKey, setHistoryKey] = useState(0)
   const outputRef = useRef<HTMLDivElement>(null)
 
   const printOutput = async () => {
@@ -96,11 +99,25 @@ export default function LessonPlanPage() {
       const reader = res.body?.getReader()
       if (!reader) throw new Error('No response stream')
       const decoder = new TextDecoder()
+      let fullOutput = ''
 
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
-        setOutput(prev => prev + decoder.decode(value, { stream: true }))
+        const chunk = decoder.decode(value, { stream: true })
+        fullOutput += chunk
+        setOutput(prev => prev + chunk)
+      }
+
+      if (fullOutput && user) {
+        saveToolOutput(
+          user.id,
+          'lesson-plan',
+          `${form.subject || 'Lesson'} · ${form.grade || ''} · ${form.topic || ''}`.trim(),
+          form,
+          fullOutput,
+        )
+        setHistoryKey(k => k + 1)
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Generation failed')
@@ -113,6 +130,21 @@ export default function LessonPlanPage() {
     navigator.clipboard.writeText(output)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  const restoreEntry = (entry: ToolOutput) => {
+    const i = entry.input as Partial<typeof form>
+    setForm({
+      subject:   i.subject   ?? '',
+      grade:     i.grade     ?? '',
+      strand:    i.strand    ?? '',
+      subStrand: i.subStrand ?? '',
+      topic:     i.topic     ?? '',
+      duration:  i.duration  ?? '40 minutes',
+      level:     i.level     ?? 'Mixed ability',
+    })
+    setOutput(entry.output)
+    setError(null)
   }
 
   const set = (key: keyof typeof form) => (value: string) => setForm(f => ({ ...f, [key]: value }))
@@ -288,6 +320,8 @@ export default function LessonPlanPage() {
           )}
         </div>
       </div>
+
+      <ToolHistoryPanel toolId="lesson-plan" refreshKey={historyKey} onRestore={restoreEntry} />
     </div>
   )
 }

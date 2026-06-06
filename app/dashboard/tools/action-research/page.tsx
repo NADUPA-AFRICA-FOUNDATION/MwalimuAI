@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { authedFetch } from '@/lib/authed-fetch'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -15,6 +15,8 @@ import {
 } from 'lucide-react'
 import { MarkdownRenderer } from '@/components/markdown-renderer'
 import { printPDF } from '@/lib/print-pdf'
+import { saveToolOutput, type ToolOutput } from '@/lib/tool-history'
+import { ToolHistoryPanel } from '@/components/tool-history-panel'
 
 const STEPS = [
   { id: 1, title: 'Identify the Problem', label: 'Problem', placeholder: 'Describe the challenge you are seeing in your classroom. Be specific — which learners, which subject, what exactly is happening?' },
@@ -40,6 +42,7 @@ export default function ActionResearchPage() {
   const [isPrinting, setIsPrinting]   = useState(false)
   const [error, setError]             = useState<string | null>(null)
   const [copied, setCopied]           = useState<number | null>(null)
+  const [historyKey, setHistoryKey]   = useState(0)
   const outputRef = useRef<HTMLDivElement>(null)
 
   const step  = STEPS.find(s => s.id === currentStep)!
@@ -80,17 +83,45 @@ export default function ActionResearchPage() {
       const reader = res.body?.getReader()
       if (!reader) throw new Error('No stream')
       const decoder = new TextDecoder()
+      let fullOutput = ''
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
         const chunk = decoder.decode(value, { stream: true })
+        fullOutput += chunk
         setStepData(prev => ({ ...prev, [currentStep]: { ...prev[currentStep], output: prev[currentStep].output + chunk } }))
+      }
+
+      if (fullOutput && user) {
+        const snapshot = { ...stepData, [currentStep]: { input: data.input, output: fullOutput } }
+        saveToolOutput(
+          user.id,
+          'action-research',
+          `Step ${currentStep}: ${step.title}`,
+          { stepData: snapshot, currentStep },
+          fullOutput,
+        )
+        setHistoryKey(k => k + 1)
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Generation failed')
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const restoreEntry = (entry: ToolOutput) => {
+    const i = entry.input as { stepData?: Record<number, StepData>; currentStep?: number }
+    if (i.stepData) {
+      const restored: Record<number, StepData> = Object.fromEntries(STEPS.map(s => [s.id, { input: '', output: '' }]))
+      for (const s of STEPS) {
+        const v = i.stepData[s.id]
+        if (v) restored[s.id] = { input: v.input ?? '', output: v.output ?? '' }
+      }
+      setStepData(restored)
+    }
+    if (typeof i.currentStep === 'number') setCurrentStep(i.currentStep)
+    setError(null)
   }
 
   const copyStep = (stepId: number) => {
@@ -269,6 +300,8 @@ export default function ActionResearchPage() {
           )}
         </div>
       </div>
+
+      <ToolHistoryPanel toolId="action-research" refreshKey={historyKey} onRestore={restoreEntry} />
     </div>
   )
 }

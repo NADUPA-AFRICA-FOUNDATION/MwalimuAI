@@ -1,7 +1,7 @@
 'use client'
 
 import { useParams, notFound } from 'next/navigation'
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -29,6 +29,9 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { getModuleById, type Lesson } from '@/lib/modules-data'
+import { getProgress, completeLesson, uncompleteLesson } from '@/lib/learning-progress'
+import { useProfile } from '@/context/profile-context'
+import { recordActivity } from '@/lib/streak'
 
 const MODULE_ICONS: Record<string, LucideIcon> = {
   CBC: BookMarked,
@@ -64,8 +67,19 @@ export default function ModuleDetailPage() {
   const params = useParams()
   const moduleId = Number(params.id)
   const module = getModuleById(moduleId)
-  
+  const { user, syncReady } = useProfile()
+
+  const programId = `module-${moduleId}`
   const [completedLessons, setCompletedLessons] = useState<number[]>([])
+
+  useEffect(() => {
+    if (!syncReady || !module) return
+    const p = getProgress(programId)
+    const ids = p.completedLessons
+      .map(k => Number(k.split('/')[1]))
+      .filter(id => module.lessons.some(l => l.id === id))
+    setCompletedLessons(ids)
+  }, [syncReady, programId, module])
 
   if (!module) {
     return (
@@ -90,11 +104,16 @@ export default function ModuleDetailPage() {
   const progressPercent = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0
 
   const toggleLessonComplete = (lessonId: number) => {
-    setCompletedLessons(prev => 
-      prev.includes(lessonId) 
-        ? prev.filter(id => id !== lessonId)
-        : [...prev, lessonId]
+    const isNowComplete = !completedLessons.includes(lessonId)
+    setCompletedLessons(prev =>
+      isNowComplete ? [...prev, lessonId] : prev.filter(id => id !== lessonId)
     )
+    if (isNowComplete) {
+      completeLesson(programId, String(moduleId), String(lessonId))
+      recordActivity('lesson', user?.id)
+    } else {
+      uncompleteLesson(programId, String(moduleId), String(lessonId))
+    }
   }
 
   return (

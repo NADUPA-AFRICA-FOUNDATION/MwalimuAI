@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -8,6 +8,8 @@ import { BackButton } from '@/components/back-button'
 import { BookOpen, Clock, BarChart3, ChevronRight, BookMarked, ClipboardCheck, Target, Users, Monitor, School, FileEdit, type LucideIcon } from 'lucide-react'
 import Link from 'next/link'
 import { modulesData } from '@/lib/modules-data'
+import { getProgress } from '@/lib/learning-progress'
+import { useProfile } from '@/context/profile-context'
 
 const MODULE_ICONS: Record<string, LucideIcon> = {
   CBC: BookMarked,
@@ -34,7 +36,20 @@ const difficultyColors = {
 }
 
 export default function ModulesPage() {
+  const { syncReady } = useProfile()
   const [selectedCategory, setSelectedCategory] = useState('all')
+  const [progresses, setProgresses] = useState<Record<number, number>>({})
+
+  useEffect(() => {
+    if (!syncReady) return
+    const map: Record<number, number> = {}
+    for (const m of modulesData) {
+      const p = getProgress(`module-${m.id}`)
+      const total = m.lessons.length
+      map[m.id] = total > 0 ? Math.round((p.completedLessons.length / total) * 100) : 0
+    }
+    setProgresses(map)
+  }, [syncReady])
 
   const filteredModules =
     selectedCategory === 'all'
@@ -106,7 +121,7 @@ export default function ModulesPage() {
                   </div>
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <BarChart3 className="w-4 h-4" />
-                    <span>Progress: {module.progress}%</span>
+                    <span>Progress: {progresses[module.id] ?? 0}%</span>
                   </div>
                 </div>
 
@@ -114,13 +129,13 @@ export default function ModulesPage() {
                 <div className="w-full h-2 bg-muted rounded-full mb-4 overflow-hidden">
                   <div
                     className="h-full bg-primary transition-all"
-                    style={{ width: `${module.progress}%` }}
+                    style={{ width: `${progresses[module.id] ?? 0}%` }}
                   />
                 </div>
 
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-primary">
-                    {module.progress > 0 ? 'Continue' : 'Start'} Learning
+                    {(progresses[module.id] ?? 0) > 0 ? 'Continue' : 'Start'} Learning
                   </span>
                   <ChevronRight className="w-5 h-5 text-primary group-hover:translate-x-1 transition-transform" />
                 </div>

@@ -14,6 +14,8 @@ import { authHeaders } from '@/lib/authed-fetch'
 import {
   Users, Send, RefreshCw, AlertCircle, Play, RotateCcw,
 } from 'lucide-react'
+import { saveToolOutput, type ToolOutput } from '@/lib/tool-history'
+import { ToolHistoryPanel } from '@/components/tool-history-panel'
 
 const GRADES = ['PP1', 'PP2', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9']
 
@@ -25,6 +27,7 @@ export default function LessonRehearsalPage() {
   const [grade, setGrade]             = useState('Grade 4')
   const [phase, setPhase]             = useState<'setup' | 'chat'>('setup')
   const [inputText, setInputText]     = useState('')
+  const [historyKey, setHistoryKey]   = useState(0)
 
   const { messages, sendMessage, status, error, setMessages } = useChat({
     transport: new DefaultChatTransport({
@@ -62,9 +65,31 @@ export default function LessonRehearsalPage() {
   }
 
   const reset = () => {
+    if (user && messages.length > 1) {
+      const transcript = messages
+        .map(m => {
+          const text = m.parts?.filter((p): p is { type: 'text'; text: string } => p.type === 'text').map(p => p.text).join('') ?? ''
+          return `${m.role === 'user' ? 'Teacher' : 'Class'}: ${text}`
+        })
+        .join('\n\n')
+      saveToolOutput(
+        user.id,
+        'lesson-rehearsal',
+        `${grade} · ${lessonPlan.split('\n')[0].slice(0, 60)}`,
+        { lessonPlan, grade },
+        transcript,
+      )
+      setHistoryKey(k => k + 1)
+    }
     setMessages([])
     setPhase('setup')
     setInputText('')
+  }
+
+  const restoreEntry = (entry: ToolOutput) => {
+    const i = entry.input as { lessonPlan?: string; grade?: string }
+    if (i.lessonPlan) setLessonPlan(i.lessonPlan)
+    if (i.grade) setGrade(i.grade)
   }
 
   // ── Setup phase ──────────────────────────────────────────────
@@ -128,6 +153,8 @@ export default function LessonRehearsalPage() {
             <Play className="w-4 h-4" /> Begin Rehearsal
           </Button>
         </div>
+
+        <ToolHistoryPanel toolId="lesson-rehearsal" refreshKey={historyKey} onRestore={restoreEntry} />
       </div>
     )
   }

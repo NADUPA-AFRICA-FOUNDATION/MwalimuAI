@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { authedFetch } from '@/lib/authed-fetch'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -17,6 +17,8 @@ import {
 import { MarkdownRenderer } from '@/components/markdown-renderer'
 import { printPDF } from '@/lib/print-pdf'
 import type { DetectionResult } from '@/app/api/detect-ai/route'
+import { saveToolOutput, type ToolOutput } from '@/lib/tool-history'
+import { ToolHistoryPanel } from '@/components/tool-history-panel'
 
 const WORK_TYPES = [
   'Lesson Plan',
@@ -103,6 +105,7 @@ export default function AssignmentFeedbackPage() {
   const [isPrinting, setIsPrinting] = useState(false)
   const [error, setError]           = useState<string | null>(null)
   const [copied, setCopied]         = useState(false)
+  const [historyKey, setHistoryKey] = useState(0)
 
   // AI detection state
   const [detection, setDetection]           = useState<DetectionResult | null>(null)
@@ -154,10 +157,24 @@ export default function AssignmentFeedbackPage() {
         const reader = res.body?.getReader()
         if (!reader) throw new Error('No stream')
         const decoder = new TextDecoder()
+        let fullOutput = ''
         while (true) {
           const { done, value } = await reader.read()
           if (done) break
-          setOutput(prev => prev + decoder.decode(value, { stream: true }))
+          const chunk = decoder.decode(value, { stream: true })
+          fullOutput += chunk
+          setOutput(prev => prev + chunk)
+        }
+
+        if (fullOutput && user) {
+          saveToolOutput(
+            user.id,
+            'assignment-feedback',
+            `${workType} · ${wordCount} words`,
+            { workType, submission },
+            fullOutput,
+          )
+          setHistoryKey(k => k + 1)
         }
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Generation failed')
@@ -167,6 +184,16 @@ export default function AssignmentFeedbackPage() {
     })()
 
     await Promise.allSettled([feedbackPromise, detectionPromise])
+  }
+
+  const restoreEntry = (entry: ToolOutput) => {
+    const i = entry.input as { workType?: string; submission?: string }
+    setWorkType(i.workType ?? 'Lesson Plan')
+    setSubmission(i.submission ?? '')
+    setOutput(entry.output)
+    setError(null)
+    setDetection(null)
+    setDetectionDismissed(false)
   }
 
   const copyOutput = () => {
@@ -299,6 +326,8 @@ export default function AssignmentFeedbackPage() {
           )}
         </div>
       </div>
+
+      <ToolHistoryPanel toolId="assignment-feedback" refreshKey={historyKey} onRestore={restoreEntry} />
     </div>
   )
 }

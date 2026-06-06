@@ -12,6 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { BackButton } from '@/components/back-button'
 import { Mail, Wand2, Copy, Check, AlertCircle, RefreshCw, FileText, Users } from 'lucide-react'
 import { MarkdownRenderer } from '@/components/markdown-renderer'
+import { saveToolOutput, type ToolOutput } from '@/lib/tool-history'
+import { ToolHistoryPanel } from '@/components/tool-history-panel'
 
 const GRADES = ['PP1', 'PP2', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9']
 
@@ -50,6 +52,7 @@ export default function ParentCommsPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [historyKey, setHistoryKey] = useState(0)
   const outputRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -82,11 +85,26 @@ export default function ParentCommsPage() {
       const reader = res.body?.getReader()
       if (!reader) throw new Error('No response stream')
       const decoder = new TextDecoder()
+      let fullOutput = ''
 
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
-        setOutput(prev => prev + decoder.decode(value, { stream: true }))
+        const chunk = decoder.decode(value, { stream: true })
+        fullOutput += chunk
+        setOutput(prev => prev + chunk)
+      }
+
+      if (fullOutput && user) {
+        const typeLabel = form.type === 'letter' ? 'Letter' : 'Meeting Notes'
+        saveToolOutput(
+          user.id,
+          'parent-comms',
+          `${typeLabel} · ${form.topic || ''}${form.studentName ? ' · ' + form.studentName : ''}`.trim(),
+          form,
+          fullOutput,
+        )
+        setHistoryKey(k => k + 1)
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Generation failed')
@@ -99,6 +117,21 @@ export default function ParentCommsPage() {
     navigator.clipboard.writeText(output)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  const restoreEntry = (entry: ToolOutput) => {
+    const i = entry.input as Partial<typeof form>
+    setForm({
+      type:        i.type        ?? 'letter',
+      grade:       i.grade       ?? '',
+      studentName: i.studentName ?? '',
+      topic:       i.topic       ?? '',
+      keyPoints:   i.keyPoints   ?? '',
+      tone:        i.tone        ?? 'Warm & Supportive',
+      teacherName: i.teacherName ?? '',
+    })
+    setOutput(entry.output)
+    setError(null)
   }
 
   const set = (key: keyof typeof form) => (value: string) => setForm(f => ({ ...f, [key]: value }))
@@ -290,6 +323,8 @@ export default function ParentCommsPage() {
           )}
         </div>
       </div>
+
+      <ToolHistoryPanel toolId="parent-comms" refreshKey={historyKey} onRestore={restoreEntry} />
     </div>
   )
 }

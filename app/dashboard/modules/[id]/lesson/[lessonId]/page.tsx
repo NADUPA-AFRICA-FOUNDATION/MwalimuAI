@@ -1,15 +1,15 @@
 'use client'
 
 import { useParams } from 'next/navigation'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { BackButton } from '@/components/back-button'
 import { Progress } from '@/components/ui/progress'
-import { 
-  PlayCircle, 
-  FileText, 
+import {
+  PlayCircle,
+  FileText,
   HelpCircle,
   Activity,
   CheckCircle,
@@ -21,6 +21,9 @@ import {
 import Link from 'next/link'
 import { getModuleById } from '@/lib/modules-data'
 import { QuizComponent, parseQuizFromContent } from '@/components/quiz'
+import { getProgress, completeLesson, uncompleteLesson, isLessonComplete } from '@/lib/learning-progress'
+import { useProfile } from '@/context/profile-context'
+import { recordActivity } from '@/lib/streak'
 
 const lessonTypeIcons = {
   video: PlayCircle,
@@ -40,9 +43,28 @@ export default function LessonPage() {
   const params = useParams()
   const moduleId = Number(params.id)
   const lessonId = Number(params.lessonId)
-  
+  const { user, syncReady } = useProfile()
+
   const module = getModuleById(moduleId)
+  const programId = `module-${moduleId}`
   const [isCompleted, setIsCompleted] = useState(false)
+
+  useEffect(() => {
+    if (!syncReady) return
+    const p = getProgress(programId)
+    setIsCompleted(isLessonComplete(p, String(moduleId), String(lessonId)))
+  }, [syncReady, programId, moduleId, lessonId])
+
+  const toggleComplete = () => {
+    const next = !isCompleted
+    setIsCompleted(next)
+    if (next) {
+      completeLesson(programId, String(moduleId), String(lessonId))
+      recordActivity('lesson', user?.id)
+    } else {
+      uncompleteLesson(programId, String(moduleId), String(lessonId))
+    }
+  }
 
   if (!module) {
     return (
@@ -273,11 +295,13 @@ export default function LessonPage() {
           const quiz = parseQuizFromContent(lesson.content)
           if (quiz) {
             return (
-              <QuizComponent 
-                quiz={quiz} 
+              <QuizComponent
+                quiz={quiz}
                 onComplete={(score, total, passed) => {
-                  if (passed) {
+                  if (passed && !isCompleted) {
                     setIsCompleted(true)
+                    completeLesson(programId, String(moduleId), String(lessonId))
+                    recordActivity('lesson', user?.id)
                   }
                 }}
               />
@@ -319,7 +343,7 @@ export default function LessonPage() {
           </div>
           <Button
             variant={isCompleted ? 'outline' : 'default'}
-            onClick={() => setIsCompleted(!isCompleted)}
+            onClick={toggleComplete}
           >
             {isCompleted ? 'Mark Incomplete' : 'Mark Complete'}
           </Button>
