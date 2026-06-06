@@ -50,7 +50,7 @@ export async function loadToolHistory(userId: string, toolId: string, limit = 25
       .order('created_at', { ascending: false })
       .limit(limit)
 
-    if (!data) return []
+    if (!data) { console.error('[mwalimu] loadToolHistory: no data returned'); return [] }
     return data.map(r => ({
       id:        r.id as string,
       toolId:    r.tool_id as string,
@@ -59,7 +59,8 @@ export async function loadToolHistory(userId: string, toolId: string, limit = 25
       output:    (r.output as string) ?? '',
       createdAt: r.created_at as string,
     }))
-  } catch {
+  } catch (err) {
+    console.error('[mwalimu] loadToolHistory error:', err)
     return []
   }
 }

@@ -87,7 +87,7 @@ export async function loadProgressFromCloud(userId: string): Promise<void> {
     }
     // Cloud wins — merge over local cache
     write({ ...read(), ...cloud })
-  } catch { /* keep local cache on network failure */ }
+  } catch (err) { console.error('[mwalimu] loadProgressFromCloud error:', err) }
 }
 
 // ── Public read helpers ────────────────────────────────────────────

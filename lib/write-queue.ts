@@ -11,7 +11,14 @@ const pending = new Set<Promise<unknown>>()
 export function trackWrite(p: PromiseLike<unknown>): void {
   const normalized = Promise.resolve(p)
   pending.add(normalized)
-  normalized.finally(() => pending.delete(normalized))
+  normalized
+    .then((result: unknown) => {
+      if (result && typeof result === 'object' && 'error' in result && (result as { error: unknown }).error) {
+        console.error('[mwalimu] Supabase write failed:', (result as { error: unknown }).error)
+      }
+    })
+    .catch((err: unknown) => console.error('[mwalimu] Supabase write threw:', err))
+    .finally(() => pending.delete(normalized))
 }
 
 export async function flushWrites(timeoutMs = 3000): Promise<void> {
