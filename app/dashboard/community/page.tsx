@@ -12,7 +12,7 @@ import { createClient } from '@/lib/supabase/client'
 import { recordCommunityPost } from '@/lib/streak'
 import {
   MessageCircle, Heart, Search, Plus, X, ChevronDown,
-  ChevronUp, Send, Users, Loader2,
+  ChevronUp, Send, Users, Loader2, Pencil, Trash2, Check,
 } from 'lucide-react'
 
 const POST_CATEGORIES = ['Assessment', 'Pedagogy', 'Technology', 'Inclusion', 'Wellbeing', 'Resources', 'Ask a Question']
@@ -20,14 +20,18 @@ const FILTER_CATS     = ['All', ...POST_CATEGORIES]
 
 interface Reply {
   id: string
+  userId: string
   author: string
   initials: string
   body: string
   timestamp: string
+  createdAt: string
+  edited: boolean
 }
 
 interface Post {
   id: string
+  userId: string
   title: string
   content: string
   category: string
@@ -35,8 +39,16 @@ interface Post {
   initials: string
   county: string
   timestamp: string
+  createdAt: string
+  edited: boolean
   likes: string[]
   replies: Reply[]
+}
+
+// Authors can edit their posts/replies for 3 hours; after that the option disappears.
+const EDIT_WINDOW_MS = 3 * 60 * 60 * 1000
+function withinEditWindow(createdAt: string): boolean {
+  return Date.now() - new Date(createdAt).getTime() < EDIT_WINDOW_MS
 }
 
 function mkInitials(name: string) {
@@ -59,6 +71,7 @@ function formatTs(iso: string): string {
 function dbToPost(row: any): Post {
   return {
     id:        row.id,
+    userId:    row.user_id     ?? '',
     title:     row.title       ?? '',
     content:   row.content     ?? '',
     category:  row.category    ?? '',
@@ -66,14 +79,19 @@ function dbToPost(row: any): Post {
     initials:  mkInitials(row.author_name ?? 'T'),
     county:    row.county      ?? '',
     timestamp: formatTs(row.created_at),
+    createdAt: row.created_at,
+    edited:    !!row.edited_at,
     likes:     row.likes       ?? [],
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     replies: (row.community_comments ?? []).map((c: any): Reply => ({
       id:        c.id,
+      userId:    c.user_id ?? '',
       author:    c.author_name ?? 'Teacher',
       initials:  mkInitials(c.author_name ?? 'T'),
       body:      c.body ?? '',
       timestamp: formatTs(c.created_at),
+      createdAt: c.created_at,
+      edited:    !!c.edited_at,
     })),
   }
 }
@@ -103,6 +121,11 @@ export default function CommunityPage() {
   const replyInputRefs                = useRef<Record<string, HTMLInputElement | null>>({})
   const [newForm, setNewForm]         = useState({ title: '', content: '', category: '' })
   const [postError, setPostError]     = useState<string | null>(null)
+  const [editingPostId, setEditingPostId] = useState<string | null>(null)
+  const [editPostForm, setEditPostForm]   = useState({ title: '', content: '' })
+  const [editingReplyId, setEditingReplyId] = useState<string | null>(null)
+  const [editReplyBody, setEditReplyBody]   = useState('')
+  const [actionError, setActionError]       = useState<string | null>(null)
 
   const authorName     = profile?.name && profile.name !== 'Teacher'
     ? profile.name
@@ -114,7 +137,7 @@ export default function CommunityPage() {
     setLoading(true)
     const { data } = await supabase
       .from('community_posts')
-      .select('*, community_comments(id, author_name, body, created_at, user_id)')
+      .select('*, community_comments(id, author_name, body, created_at, user_id, edited_at)')
       .order('created_at', { ascending: false })
     setPosts((data ?? []).map(dbToPost))
     setLoading(false)
@@ -156,8 +179,9 @@ export default function CommunityPage() {
     setReplyErrors(prev => ({ ...prev, [postId]: '' }))
 
     const optimistic: Reply = {
-      id: `temp-${Date.now()}`, author: authorName,
+      id: `temp-${Date.now()}`, userId, author: authorName,
       initials: authorInitials, body, timestamp: 'Just now',
+      createdAt: new Date().toISOString(), edited: false,
     }
     setPosts(prev => prev.map(p =>
       p.id === postId ? { ...p, replies: [...p.replies, optimistic] } : p
@@ -212,6 +236,70 @@ export default function CommunityPage() {
       setPosts(prev => [newPost, ...prev])
       setExpanded(newPost.id)
     }
+  }
+
+  // ── Edit & delete (own posts/replies only; edit within 3 hours) ──
+  const deletePost = async (postId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!window.confirm('Delete this post and all its replies? This cannot be undone.')) return
+    setActionError(null)
+    const prev = posts
+    setPosts(p => p.filter(x => x.id !== postId))
+    const { error } = await supabase.from('community_posts').delete().eq('id', postId)
+    if (error) { setPosts(prev); setActionError(`Delete failed: ${error.message}`) }
+  }
+
+  const deleteReply = async (postId: string, replyId: string) => {
+    if (!window.confirm('Delete this reply? This cannot be undone.')) return
+    setActionError(null)
+    const prev = posts
+    setPosts(p => p.map(x => x.id === postId
+      ? { ...x, replies: x.replies.filter(r => r.id !== replyId) }
+      : x))
+    const { error } = await supabase.from('community_comments').delete().eq('id', replyId)
+    if (error) { setPosts(prev); setActionError(`Delete failed: ${error.message}`) }
+  }
+
+  const startEditPost = (post: Post, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setEditingPostId(post.id)
+    setEditPostForm({ title: post.title, content: post.content })
+    setExpanded(post.id)
+  }
+
+  const saveEditPost = async (postId: string) => {
+    const title = editPostForm.title.trim()
+    const content = editPostForm.content.trim()
+    if (!title || !content) return
+    setActionError(null)
+    const editedAt = new Date().toISOString()
+    const { error } = await supabase
+      .from('community_posts')
+      .update({ title, content, edited_at: editedAt, updated_at: editedAt })
+      .eq('id', postId)
+    if (error) { setActionError(`Edit failed: ${error.message}`); return }
+    setPosts(p => p.map(x => x.id === postId ? { ...x, title, content, edited: true } : x))
+    setEditingPostId(null)
+  }
+
+  const startEditReply = (reply: Reply) => {
+    setEditingReplyId(reply.id)
+    setEditReplyBody(reply.body)
+  }
+
+  const saveEditReply = async (postId: string, replyId: string) => {
+    const body = editReplyBody.trim()
+    if (!body) return
+    setActionError(null)
+    const { error } = await supabase
+      .from('community_comments')
+      .update({ body, edited_at: new Date().toISOString() })
+      .eq('id', replyId)
+    if (error) { setActionError(`Edit failed: ${error.message}`); return }
+    setPosts(p => p.map(x => x.id === postId
+      ? { ...x, replies: x.replies.map(r => r.id === replyId ? { ...r, body, edited: true } : r) }
+      : x))
+    setEditingReplyId(null)
   }
 
   const totalReplies = posts.reduce((s, p) => s + p.replies.length, 0)
@@ -303,6 +391,12 @@ export default function CommunityPage() {
         ))}
       </div>
 
+      {actionError && (
+        <p className="text-sm text-destructive bg-destructive/10 rounded-xl px-3 py-2" role="alert">
+          {actionError}
+        </p>
+      )}
+
       {/* Posts list */}
       {loading ? (
         <div className="flex justify-center py-16">
@@ -362,7 +456,24 @@ export default function CommunityPage() {
                     <span>{post.author}</span>
                   </div>
                   <span className="hidden sm:inline">{post.timestamp}</span>
+                  {post.edited && <span className="italic">Edited</span>}
                   <div className="ml-auto flex items-center gap-3">
+                    {post.userId === userId && (
+                      <>
+                        {withinEditWindow(post.createdAt) && (
+                          <button onClick={e => startEditPost(post, e)}
+                            className="flex items-center gap-1 hover:text-foreground transition-colors"
+                            aria-label="Edit post">
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        <button onClick={e => deletePost(post.id, e)}
+                          className="flex items-center gap-1 hover:text-destructive transition-colors"
+                          aria-label="Delete post">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </>
+                    )}
                     <button onClick={e => openAndFocusReply(post.id, e)}
                       className="flex items-center gap-1 hover:text-foreground transition-colors"
                       aria-label={`${post.replies.length} replies — click to reply`}>
@@ -381,7 +492,34 @@ export default function CommunityPage() {
                 {/* Expanded */}
                 {isOpen && (
                   <div className="border-t border-border/40 px-5 pb-5">
-                    <p className="text-sm text-muted-foreground leading-relaxed py-4">{post.content}</p>
+                    {editingPostId === post.id ? (
+                      <div className="space-y-3 py-4">
+                        <Input
+                          aria-label="Edit post title"
+                          value={editPostForm.title}
+                          onChange={e => setEditPostForm(f => ({ ...f, title: e.target.value }))}
+                          className="rounded-xl text-sm font-semibold"
+                        />
+                        <Textarea
+                          aria-label="Edit post content"
+                          value={editPostForm.content}
+                          onChange={e => setEditPostForm(f => ({ ...f, content: e.target.value }))}
+                          className="rounded-xl resize-none text-sm" rows={4}
+                        />
+                        <div className="flex gap-2">
+                          <Button size="sm" onClick={() => saveEditPost(post.id)}
+                            disabled={!editPostForm.title.trim() || !editPostForm.content.trim()}
+                            className="rounded-xl gap-1.5">
+                            <Check className="w-3.5 h-3.5" /> Save changes
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => setEditingPostId(null)} className="rounded-xl">
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground leading-relaxed py-4">{post.content}</p>
+                    )}
 
                     {post.replies.length > 0 && (
                       <div className="space-y-3 mb-4">
@@ -397,8 +535,46 @@ export default function CommunityPage() {
                               <div className="flex items-center gap-2 mb-1">
                                 <span className="text-xs font-semibold">{reply.author}</span>
                                 <span className="text-xs text-muted-foreground">{reply.timestamp}</span>
+                                {reply.edited && <span className="text-xs text-muted-foreground italic">Edited</span>}
+                                {reply.userId === userId && !reply.id.startsWith('temp-') && (
+                                  <span className="ml-auto flex items-center gap-2">
+                                    {withinEditWindow(reply.createdAt) && (
+                                      <button onClick={() => startEditReply(reply)}
+                                        className="text-muted-foreground hover:text-foreground transition-colors"
+                                        aria-label="Edit reply">
+                                        <Pencil className="w-3 h-3" />
+                                      </button>
+                                    )}
+                                    <button onClick={() => deleteReply(post.id, reply.id)}
+                                      className="text-muted-foreground hover:text-destructive transition-colors"
+                                      aria-label="Delete reply">
+                                      <Trash2 className="w-3 h-3" />
+                                    </button>
+                                  </span>
+                                )}
                               </div>
-                              <p className="text-xs text-muted-foreground leading-relaxed">{reply.body}</p>
+                              {editingReplyId === reply.id ? (
+                                <div className="flex gap-2 mt-1">
+                                  <Input
+                                    aria-label="Edit reply"
+                                    value={editReplyBody}
+                                    onChange={e => setEditReplyBody(e.target.value)}
+                                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveEditReply(post.id, reply.id) } }}
+                                    className="rounded-xl text-xs h-8"
+                                  />
+                                  <Button size="sm" onClick={() => saveEditReply(post.id, reply.id)}
+                                    disabled={!editReplyBody.trim()}
+                                    className="rounded-xl px-2.5 h-8 shrink-0" aria-label="Save reply">
+                                    <Check className="w-3 h-3" />
+                                  </Button>
+                                  <Button size="sm" variant="ghost" onClick={() => setEditingReplyId(null)}
+                                    className="rounded-xl px-2.5 h-8 shrink-0" aria-label="Cancel edit">
+                                    <X className="w-3 h-3" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <p className="text-xs text-muted-foreground leading-relaxed">{reply.body}</p>
+                              )}
                             </div>
                           </div>
                         ))}
