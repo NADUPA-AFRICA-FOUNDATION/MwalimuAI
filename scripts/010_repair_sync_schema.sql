@@ -46,7 +46,7 @@ BEGIN
     WHERE t.relname = 'learning_progress'
       AND c.contype IN ('u', 'p')
       AND (
-        SELECT array_agg(a.attname ORDER BY a.attname)
+        SELECT array_agg(a.attname::text ORDER BY a.attname)
         FROM unnest(c.conkey) k
         JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = k
       ) = ARRAY['program_id', 'user_id']
@@ -96,7 +96,7 @@ BEGIN
     WHERE t.relname = 'tools_used'
       AND c.contype IN ('u', 'p')
       AND (
-        SELECT array_agg(a.attname ORDER BY a.attname)
+        SELECT array_agg(a.attname::text ORDER BY a.attname)
         FROM unnest(c.conkey) k
         JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = k
       ) = ARRAY['tool_id', 'user_id']
