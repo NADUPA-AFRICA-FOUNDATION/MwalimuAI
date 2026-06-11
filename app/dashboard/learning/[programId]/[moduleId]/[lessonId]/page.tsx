@@ -84,7 +84,7 @@ export default function LessonPage() {
               author:    r.author as string,
               content:   r.content as string,
               timestamp: new Date(r.created_at as string).toLocaleDateString(),
-              isOwn:     false,
+              isOwn:     r.user_id === user?.id,
             }))
           return remote.length > 0 ? [...prev, ...remote] : prev
         })
@@ -101,7 +101,7 @@ export default function LessonPage() {
       }))
     } catch {}
     setMounted(true)
-  }, [program, mod, lesson])
+  }, [program, mod, lesson, user?.id])
 
   // Re-read progress after cloud sync so lesson completion shows correctly.
   // Reflection only updates if the user hasn't typed anything yet.

@@ -9,6 +9,7 @@ import { useProfile } from '@/context/profile-context'
 import { recordActivity } from '@/lib/streak'
 import { PenLine, RefreshCw, ChevronDown, ChevronUp, Calendar, Flame, Sparkles, Lock, CheckCircle, Laugh, Smile, Meh, Frown, Annoyed, type LucideIcon } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { trackWrite } from '@/lib/write-queue'
 
 const JOURNAL_KEY = 'mwalimu_journal'
 
@@ -173,16 +174,17 @@ export default function JournalPage() {
 
     recordActivity('journal', user.id)
 
-    // Persist to Supabase
+    // Persist to Supabase — trackWrite logs failures and lets signOut flush
+    // in-flight writes; the entry stays in localStorage if the write fails.
     const supabase = createClient()
-    supabase.from('journal_entries').insert({
+    trackWrite(supabase.from('journal_entries').insert({
       id:         entry.id,
       user_id:    user.id,
       title:      entry.prompt,
       content:    entry.content,
       mood:       entry.mood,
       created_at: new Date(entry.date).toISOString(),
-    }).then(() => {}, () => {}) // entry is still in localStorage if this fails
+    }))
   }
 
   const avgMood = entries.length
