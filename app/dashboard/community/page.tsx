@@ -6,6 +6,10 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import {
+  AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogFooter,
+  AlertDialogTitle, AlertDialogDescription, AlertDialogCancel, AlertDialogAction,
+} from '@/components/ui/alert-dialog'
 import { BackButton } from '@/components/back-button'
 import { useProfile } from '@/context/profile-context'
 import { createClient } from '@/lib/supabase/client'
@@ -126,6 +130,12 @@ export default function CommunityPage() {
   const [editingReplyId, setEditingReplyId] = useState<string | null>(null)
   const [editReplyBody, setEditReplyBody]   = useState('')
   const [actionError, setActionError]       = useState<string | null>(null)
+  const [pendingDelete, setPendingDelete]   = useState<
+    { kind: 'post'; postId: string; title: string; replyCount: number }
+    | { kind: 'reply'; postId: string; replyId: string }
+    | null
+  >(null)
+  const [deleting, setDeleting] = useState(false)
 
   const authorName     = profile?.name && profile.name !== 'Teacher'
     ? profile.name
@@ -239,25 +249,35 @@ export default function CommunityPage() {
   }
 
   // ── Edit & delete (own posts/replies only; edit within 3 hours) ──
-  const deletePost = async (postId: string, e: React.MouseEvent) => {
+  const deletePost = (post: Post, e: React.MouseEvent) => {
     e.stopPropagation()
-    if (!window.confirm('Delete this post and all its replies? This cannot be undone.')) return
-    setActionError(null)
-    const prev = posts
-    setPosts(p => p.filter(x => x.id !== postId))
-    const { error } = await supabase.from('community_posts').delete().eq('id', postId)
-    if (error) { setPosts(prev); setActionError(`Delete failed: ${error.message}`) }
+    setPendingDelete({ kind: 'post', postId: post.id, title: post.title, replyCount: post.replies.length })
   }
 
-  const deleteReply = async (postId: string, replyId: string) => {
-    if (!window.confirm('Delete this reply? This cannot be undone.')) return
+  const deleteReply = (postId: string, replyId: string) => {
+    setPendingDelete({ kind: 'reply', postId, replyId })
+  }
+
+  const confirmDelete = async () => {
+    if (!pendingDelete) return
+    setDeleting(true)
     setActionError(null)
     const prev = posts
-    setPosts(p => p.map(x => x.id === postId
-      ? { ...x, replies: x.replies.filter(r => r.id !== replyId) }
-      : x))
-    const { error } = await supabase.from('community_comments').delete().eq('id', replyId)
-    if (error) { setPosts(prev); setActionError(`Delete failed: ${error.message}`) }
+
+    if (pendingDelete.kind === 'post') {
+      setPosts(p => p.filter(x => x.id !== pendingDelete.postId))
+      const { error } = await supabase.from('community_posts').delete().eq('id', pendingDelete.postId)
+      if (error) { setPosts(prev); setActionError(`Delete failed: ${error.message}`) }
+    } else {
+      setPosts(p => p.map(x => x.id === pendingDelete.postId
+        ? { ...x, replies: x.replies.filter(r => r.id !== pendingDelete.replyId) }
+        : x))
+      const { error } = await supabase.from('community_comments').delete().eq('id', pendingDelete.replyId)
+      if (error) { setPosts(prev); setActionError(`Delete failed: ${error.message}`) }
+    }
+
+    setDeleting(false)
+    setPendingDelete(null)
   }
 
   const startEditPost = (post: Post, e: React.MouseEvent) => {
@@ -467,7 +487,7 @@ export default function CommunityPage() {
                             <Pencil className="w-3.5 h-3.5" />
                           </button>
                         )}
-                        <button onClick={e => deletePost(post.id, e)}
+                        <button onClick={e => deletePost(post, e)}
                           className="flex items-center gap-1 hover:text-destructive transition-colors"
                           aria-label="Delete post">
                           <Trash2 className="w-3.5 h-3.5" />
@@ -617,6 +637,48 @@ export default function CommunityPage() {
           })}
         </div>
       )}
+
+      {/* Delete confirmation */}
+      <AlertDialog open={pendingDelete !== null} onOpenChange={open => { if (!open && !deleting) setPendingDelete(null) }}>
+        <AlertDialogContent className="rounded-2xl max-w-md p-0 overflow-hidden gap-0">
+          <AlertDialogHeader className="px-6 pt-6 pb-2 items-center sm:items-start">
+            <div className="w-12 h-12 rounded-2xl bg-destructive/10 flex items-center justify-center mb-3">
+              <Trash2 className="w-5 h-5 text-destructive" aria-hidden="true" />
+            </div>
+            <AlertDialogTitle className="text-base font-bold tracking-tight">
+              {pendingDelete?.kind === 'post' ? 'Delete this post?' : 'Delete this reply?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-sm leading-relaxed text-left">
+              {pendingDelete?.kind === 'post' ? (
+                <>
+                  <span className="font-medium text-foreground">&ldquo;{pendingDelete.title}&rdquo;</span>
+                  {pendingDelete.replyCount > 0 && (
+                    <> and its {pendingDelete.replyCount} {pendingDelete.replyCount === 1 ? 'reply' : 'replies'}</>
+                  )}{' '}
+                  will be permanently removed from the community. This cannot be undone.
+                </>
+              ) : (
+                <>Your reply will be permanently removed from this discussion. This cannot be undone.</>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="px-6 py-4 mt-2 bg-muted/30 border-t border-border/40 flex-row justify-end gap-2">
+            <AlertDialogCancel disabled={deleting} className="rounded-xl mt-0">
+              Keep it
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={e => { e.preventDefault(); confirmDelete() }}
+              disabled={deleting}
+              className="rounded-xl bg-destructive text-white hover:bg-destructive/90 gap-2"
+            >
+              {deleting
+                ? <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
+                : <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />}
+              {deleting ? 'Deleting' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
