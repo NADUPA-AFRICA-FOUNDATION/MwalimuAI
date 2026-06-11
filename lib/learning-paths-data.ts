@@ -84,9 +84,41 @@ const cbcFoundations: Program = {
             'How CBC serves 21st-century learners',
             'Real classroom transformation stories',
           ],
-          reading: `The Competency-Based Curriculum (CBC) represents Kenya's most significant educational reform in decades. Introduced by KICD from 2017, CBC shifts the focus from knowledge memorisation to the development of skills, values, and competencies that learners need throughout life. The driving question changed from "What does this child know?" to "What can this child do and become?"\n\nUnder the old 8-4-4 system, success was measured almost entirely by final examination scores, which often rewarded rote learning over understanding. CBC changes this by embedding learning in real-world contexts, encouraging learners to apply knowledge rather than just recall it. For teachers, this is both exciting and challenging — it invites you to become a facilitator of learning experiences rather than a transmitter of content.`,
-          reflectionPrompt: 'Think about one lesson you taught recently. How could you redesign it to be more competency-focused rather than content-focused?',
-          reflectionPlaceholder: 'Describe the lesson, what you would change, and which competency it would develop...',
+          reading: `## Two learners, one question
+
+Wanjiru can recite the stages of the water cycle without pausing for breath. Baraka cannot recite them as fluently, but when the school's rain tank ran dry in February, he explained to his classmates why the county was seeding clouds, and what that had to do with evaporation. Under an examination that asks "List the stages of the water cycle," Wanjiru wins. Under almost any real situation either child will ever face, Baraka is the one who has learned.
+
+The Competency-Based Curriculum exists because Kenya decided, as policy, that Baraka's kind of learning is the goal. A competency is not a softer alternative to knowledge. It is **knowledge, skills, and values working together in a real situation**. Baraka knows the water cycle; what makes him competent is that the knowledge is connected, usable, and his own.
+
+## Why the reform happened
+
+CBC did not appear from nowhere. Three pressures converged:
+
+1. **Evidence from classrooms.** National assessments repeatedly showed learners passing examinations while unable to apply basic literacy and numeracy in unfamiliar contexts. The system was certifying recall, not capability.
+2. **Evidence from the labour market.** Employers and tertiary institutions reported graduates strong on certificates and weak on problem solving, communication, and initiative, the very things work actually demands.
+3. **A national vision.** The Basic Education Curriculum Framework (KICD, 2017) commits to nurturing every learner as an *engaged, empowered and ethical citizen*. Read that phrase slowly. None of those three words can be achieved by memorisation.
+
+The structural change from 8-4-4 toward a competency-based structure (with early years, middle school, and senior school pathways) is the visible part. The invisible part is the one that lives or dies in your classroom: the shift in what counts as evidence of learning.
+
+| Question the old system asked | Question CBC asks |
+| --- | --- |
+| What does this child know? | What can this child *do* with what they know? |
+| Did we cover the syllabus? | Did the learners develop the outcome? |
+| Who ranked highest? | What does each learner need next? |
+
+>> KEY: CBC is not a new set of topics to cover. It is a new definition of success. Content still matters deeply, but content is now the raw material of competence, not the finish line.
+
+## What changes in your Tuesday
+
+Be suspicious of any description of CBC that stays abstract. Concretely, a competency-focused teacher does three things differently: they state outcomes as observable actions, they give learners genuine work that requires thinking (not just remembering), and they treat assessment as information rather than judgement. Everything else in this program builds on those three habits.
+
+A common misconception is that CBC means projects, posters, and group seating, and that direct teaching is now forbidden. Wrong on both counts. A brilliant five-minute explanation is still brilliant teaching. The test is what happens *after* the explanation: do learners then use the idea to reason, make, decide, or explain, or do they copy it down and wait for the next one?
+
+>> THINK: Imagine national examinations were abolished tomorrow. Which parts of your current teaching would you keep because they genuinely build capability, and which parts exist only because an exam is watching? Be honest. That second list is where CBC is inviting you to change.
+
+>> TRY: In your next lesson, replace one "recall" question with a "use it" question. Instead of "What are the stages of the water cycle?" ask "Our school tank ran dry in February. Use the water cycle to explain why, and tell me one thing the school could do about it." Notice who comes alive.`,
+          reflectionPrompt: 'Identify the single most exam-shaped habit in your current teaching, something you do mainly because an examination is watching. What would you replace it with if capability, not marks, were the only measure? Be specific about the lesson where you will try the replacement.',
+          reflectionPlaceholder: 'My most exam-shaped habit is...\nIf capability were the only measure, I would instead...\nI will try this in my lesson on...',
         },
         {
           id: 'l2',
@@ -99,9 +131,39 @@ const cbcFoundations: Program = {
             'Creativity and Imagination across subjects',
             'Citizenship, Digital Literacy, Learning to Learn, Self-Efficacy',
           ],
-          reading: `CBC identifies seven core competencies every Kenyan learner must develop: Communication and Collaboration, Critical Thinking and Problem Solving, Creativity and Imagination, Citizenship, Digital Literacy, Learning to Learn, and Self-Efficacy. These are not separate subjects — they are woven into every lesson across all learning areas.\n\nAs a teacher, your role is to create activities where competencies emerge naturally. A mathematics lesson on fractions, for example, can develop Critical Thinking when learners explain their reasoning, Collaboration when they work in groups, and Communication when they present solutions. The competency does not need to be labelled for the learner — it simply needs to be the outcome of a well-designed activity.`,
-          reflectionPrompt: 'Choose two core competencies and describe one specific activity for each that you could try this week.',
-          reflectionPlaceholder: 'Competency 1: ... Activity: ...\nCompetency 2: ... Activity: ...',
+          reading: `## Seven competencies, one design problem
+
+CBC names seven core competencies every Kenyan learner must develop: **Communication and Collaboration, Critical Thinking and Problem Solving, Creativity and Imagination, Citizenship, Digital Literacy, Learning to Learn, and Self-Efficacy**. The list is easy to memorise, and that is exactly the trap. A competency listed on the chalkboard is decoration. A competency *demanded by the task* is development. The difference between the two is the entire craft of CBC teaching.
+
+Here is the uncomfortable rule that follows: **a task develops a competency only if the task cannot be completed without it**. Group seating does not develop collaboration if one learner can do all the work. A "creative" poster does not develop creativity if every group copies the same diagram from the textbook. Before you credit a lesson with a competency, ask: could a learner finish this task without ever using that competency? If yes, the lesson is not developing it.
+
+## What each one looks like when it is real
+
+- **Communication and Collaboration**: a learner explains their method to a partner who must then use it; success depends on the explanation actually working.
+- **Critical Thinking and Problem Solving**: learners meet a situation where the method is *not* given and must choose, test, and justify an approach.
+- **Creativity and Imagination**: the task has more than one right answer, and learners must generate options before selecting one.
+- **Citizenship**: learners weigh a real local issue, the school water point, the market's plastic waste, and connect their subject knowledge to a community decision.
+- **Digital Literacy**: where devices exist, learners use them to create or find and *evaluate* information, not just to consume. Where they do not, learners can still learn to question sources.
+- **Learning to Learn**: learners are asked how they got an answer, what confused them, and what they would do differently, and the teacher treats those answers as seriously as the content.
+- **Self-Efficacy**: tasks are pitched so that effort visibly pays off; learners experience earned success, not rescued success.
+
+>> CASE: A Grade 5 teacher in Kisumu taught fractions with one change. Instead of demonstrating equivalence on the board, she gave each group a different chapati-sharing problem with a deliberate twist: the shares could not come out even. Groups had to decide what "fair" meant, defend their split to another group, and write one sentence on what made the problem hard. One task: critical thinking (choosing a method), communication (defending it), self-efficacy (productive struggle that resolved). No competency was written on the board. All three happened.
+
+## The competency audit
+
+Take any lesson plan you have taught this term and run this three-question audit:
+
+1. Which competency does the *main activity* actually force learners to use?
+2. At what moment in the lesson would I have *seen* it happening?
+3. If I cannot answer the first two, what one change to the task would create that moment?
+
+This audit is more valuable than any list. Teachers who run it weekly report that their plans change in a consistent direction: fewer activities, each demanding more.
+
+>> THINK: Which of the seven competencies do you, as a professional adult, use least in your own working week? Teachers tend to under-design for the competencies they are least comfortable exercising themselves. Sit with that for a moment before you plan next week.
+
+>> TRY: Run the three-question audit on tomorrow's lesson plan. If question 1 has no honest answer, change one task, not the whole plan, so that finishing it requires explaining, choosing, or creating.`,
+          reflectionPrompt: 'Run the competency audit on a lesson you taught this week: which competency did the main activity genuinely force learners to use, and at what moment could you have seen it? If the honest answer is "none", redesign that one activity and describe the new version.',
+          reflectionPlaceholder: 'Lesson: ...\nThe main activity forced learners to... (or honestly, it did not because...)\nThe moment I could see it: ...\nMy redesign: ...',
         },
         {
           id: 'l3',
@@ -114,9 +176,39 @@ const cbcFoundations: Program = {
             'Teacher role: instructor vs facilitator',
             'The learner: passive recipient vs active constructor',
           ],
-          reading: `The most important shift in moving from 8-4-4 to CBC is in the purpose of assessment. In 8-4-4, assessment meant examinations that ranked learners. In CBC, assessment is continuous, diagnostic, and developmental — it tells the teacher what the learner can already do and what support they need next. This is assessment FOR learning, not OF learning.\n\nThe curriculum structure also changes. 8-4-4 organised content into subjects with prescribed syllabi to "cover." CBC organises learning into Strands and Sub-strands with Specific Learning Outcomes (SLOs). Teachers move from covering content to designing experiences that lead learners toward identified competencies, and assessment tells them whether learners are getting there.`,
-          reflectionPrompt: 'Which aspect of the CBC approach feels most different from what you were trained to do? What support would help you make this transition?',
-          reflectionPlaceholder: 'I find it most different to... because... What would help me is...',
+          reading: `## The comparison that actually matters
+
+Most CBC training compares the two systems with a table, so let us start with one, then go one level deeper than the table can.
+
+| Dimension | 8-4-4 | CBC |
+| --- | --- | --- |
+| Purpose of assessment | Rank learners after learning | Inform teaching during learning |
+| Curriculum unit | Subjects with syllabi to cover | Strands and sub-strands with outcomes to develop |
+| Evidence of success | Examination score | Demonstrated performance against criteria |
+| Teacher's centre of gravity | Transmitting content | Designing and guiding experiences |
+| Learner's role | Receive, retain, reproduce | Explore, apply, explain, create |
+
+The deepest row is the first. In 8-4-4, assessment happened *after* learning and its product was a rank. In CBC, assessment happens *during* learning and its product is a decision: what does this learner need next? Educational researchers call this **assessment for learning**, and decades of evidence (most famously Black and Wiliam's research synthesis) show it produces some of the largest learning gains of any classroom intervention, especially for the lowest-attaining learners. You will spend a whole program on this later. For now, hold the distinction.
+
+## What does NOT change
+
+This lesson must also correct an overcorrection. CBC does **not** mean:
+
+- **Content stops mattering.** You cannot think critically about fractions without knowing fractions. Competence is built *on* knowledge; a curriculum that abandons knowledge produces confident incompetence.
+- **Direct teaching is banned.** Clear explanation, modelling, and worked examples remain essential tools. What changes is what follows them.
+- **Rigour drops.** Explaining *why* an answer is right is harder than producing the answer. Done honestly, CBC raises the cognitive bar; it does not lower it.
+
+## The ritual trap
+
+Here is the failure mode to watch for in your own school: classrooms that perform CBC's *rituals*, learners in groups, manila paper on walls, "learner-centred" written in the scheme of work, while the *thinking* remains exactly as it was. Five learners around one desk copying one answer is 8-4-4 with the furniture rearranged. The question that cuts through every ritual is always the same: **who is doing the cognitive work?** If the answer is "the teacher" or "one learner per group", the reform has not reached that classroom yet, whatever the seating says.
+
+>> KEY: CBC is a change in pedagogy, not a change in furniture. A teacher lecturing brilliantly and then making every learner apply the idea is more CBC than a silent groupwork lesson where no one had to think.
+
+>> THINK: Recall one groupwork lesson you have taught or observed that produced no real thinking. What exactly went wrong, the task, the group structure, the accountability? Naming the mechanism is the first step to never repeating it.
+
+>> TRY: Next groupwork lesson, add one line to the instructions: "Anyone in your group may be asked to explain the answer." Then actually pick the quiet ones. Watch how the group's behaviour changes when explanation can land on anyone.`,
+          reflectionPrompt: 'Where in your own teaching do you see CBC rituals without CBC thinking, in your classroom, honestly, or in your school? Choose one ritual and describe how you would put the cognitive work back into it.',
+          reflectionPlaceholder: 'The ritual I see most is...\nThe thinking that is missing: ...\nTo fix it I would...',
         },
       ],
     },
@@ -136,9 +228,33 @@ const cbcFoundations: Program = {
             'Writing and unpacking Specific Learning Outcomes',
             'Using the curriculum design document in lesson planning',
           ],
-          reading: `Every CBC learning area is organised into Strands — broad thematic areas — and Sub-strands, which are specific topics within each strand. For example, in English, one strand might be "Reading" and a sub-strand might be "Reading Comprehension." This structure helps teachers connect individual lessons to the bigger curriculum map.\n\nSpecific Learning Outcomes (SLOs) are the measurable statements of what learners should be able to do by the end of a lesson or unit. Well-written SLOs use action verbs: "identify," "explain," "demonstrate," "create." When you plan a lesson, you start with the SLO and design activities that lead learners toward it. The SLO also guides your assessment — if a learner can perform the SLO, they have met the expectation.`,
-          reflectionPrompt: 'Pick one lesson you\'re planning this week. Write 2–3 SLOs using action verbs that you can actually assess.',
-          reflectionPlaceholder: 'By the end of this lesson, learners should be able to: 1. ... 2. ... 3. ...',
+          reading: `## The curriculum design is a map, not a cage
+
+Open any KICD curriculum design and you will find the same anatomy: an **essence statement** explaining why the learning area exists, **strands** (the broad organising themes), **sub-strands** (focused topics within each strand), **specific learning outcomes** (SLOs) for each sub-strand, **suggested learning experiences**, **key inquiry questions**, and links to core competencies, values, and pertinent and contemporary issues (PCIs). Most teachers read only the SLO column. The teachers who plan best read two more: the *key inquiry questions*, which hand you ready-made lesson hooks, and the *essence statement*, which tells you what the whole learning area is for, the test you should hold every lesson against.
+
+In English, for example, "Reading" is a strand, "Reading Comprehension" a sub-strand, and an SLO under it might read: *"By the end of the sub-strand, the learner should be able to make inferences from a text read."*
+
+## Unpacking an SLO
+
+An SLO has three working parts, and unpacking them is a precise skill:
+
+1. **The verb**, what the learner will *do*. This is the assessable heart. "Make inferences" demands different teaching than "identify" or "recall".
+2. **The content**, what the verb operates on: a text, a number pattern, a map, a seed.
+3. **The implied evidence**, what you would accept as proof. If the verb is "make inferences", the evidence must be a learner producing an inference you never taught them. A learner repeating an inference you modelled is evidence of memory, not of the outcome.
+
+The verb deserves real attention because verbs sit at different cognitive depths. "Identify" and "list" sit low: necessary, but easy. "Explain", "compare", and "classify" sit in the middle: they require understanding. "Design", "justify", and "evaluate" sit high: they require judgement. A week of lessons whose outcomes are all low-verb is a week where nobody had to think hard. KICD's designs deliberately mix the levels; your schemes of work should preserve that mix rather than flattening everything to "identify".
+
+### Beware the unassessable outcome
+
+Some outcome statements feel virtuous but cannot be observed: *"appreciate the importance of fractions", "be aware of pollution"*. What does appreciation look like? How would awareness fail? If you cannot describe what evidence would show the outcome was met, and what its *absence* would look like, the outcome cannot steer a lesson. Translate it: "appreciate fractions" might become *"use fractions to solve a sharing problem and explain why the answer is fair"*. Now you can teach toward it and assess it.
+
+>> CASE: A Grade 4 science teacher in Nyeri unpacked the SLO "classify materials according to whether they are transparent, translucent or opaque." Verb: classify, so learners must *sort and justify*, not recite definitions. Content: real materials, so she collected polythene, a glass bottle, exercise book paper, and a kiondo. Evidence: each learner places one material and says *because*. Her assessment took four minutes at the end of the lesson and told her exactly which six learners confused translucent with transparent, and that is next lesson's starter sorted.
+
+>> KEY: The SLO is a contract with yourself: the verb tells you what learners must do, and what learners must do tells you what evidence to collect. If your activity and your evidence do not match the verb, the lesson drifts, however pleasant it feels.
+
+>> TRY: Take one outcome from this week's scheme of work and write its three parts in the margin: verb, content, evidence-I-will-accept. If the verb is "know" or "appreciate", translate it into something a learner can visibly do.`,
+          reflectionPrompt: 'Take one vague or unassessable outcome you have worked with ("appreciate...", "be aware of...", "understand..."). Translate it into an observable SLO, then state exactly what evidence you would accept that a learner has met it, and what its absence would look like.',
+          reflectionPlaceholder: 'Original outcome: ...\nTranslated SLO: By the end of the lesson, learners should be able to...\nEvidence I would accept: ...\nWhat absence would look like: ...',
         },
         {
           id: 'l2',
@@ -151,9 +267,35 @@ const cbcFoundations: Program = {
             'Collaborative learning structures',
             'Moving from lecture to guided discovery',
           ],
-          reading: `A learner-centred classroom is one where learners are actively doing — exploring, creating, discussing, and applying — rather than passively watching the teacher. This doesn\'t mean the teacher disappears; it means you design activities and then step back to guide, question, and support as learners work.\n\nPractical examples: instead of explaining how plants grow, give learner groups a real seedling to observe and record changes. Instead of telling learners the rules of grammar, give them a text and ask them to discover the pattern. Instead of solving all maths problems on the board, have learners attempt first, then discuss different approaches. The teacher\'s expertise shows in the quality of the activity design and the questions asked during the lesson, not the amount of talking done.`,
-          reflectionPrompt: 'Take one lesson you typically "teach" by explaining. Redesign the main activity so learners discover or construct the knowledge themselves.',
-          reflectionPlaceholder: 'Original activity: I usually...\nRedesigned: Instead, learners will...\nMy role during this: I will...',
+          reading: `## The question that defines learner-centredness
+
+Forget the seating plan. A lesson is learner-centred when one question has the right answer: **who is doing the thinking?** A silent class watching a masterful explanation is teacher-centred. The same class, two minutes later, using that explanation to attack a problem the teacher has *not* solved for them, is learner-centred. The label belongs to moments, not lessons, and your job as a designer is to engineer more of those moments.
+
+This reframing matters because the common alternative, "learner-centred means the teacher talks less", produces bad lessons. The teacher's expertise does not shrink in CBC; it relocates. It moves out of the performance and into two places: **the design of the task** and **the quality of the questions** asked while learners work.
+
+## Designing for productive struggle
+
+The engine of learning is what researchers call *productive struggle*: a task hard enough that learners must genuinely think, structured enough that the struggle leads somewhere. Three design principles create it:
+
+1. **Attempt before explanation.** Pose the problem *first*. Let learners try, fail, and form questions, then explain. An explanation that answers a question learners already have lands ten times harder than one that answers a question nobody asked.
+2. **Low floor, high ceiling.** Every learner can start (the floor is low); the task can stretch as far as your strongest learner can go (the ceiling is high). "Find as many ways as you can to make 24" beats "What is 4 by 6?" because both the struggling and the swift have somewhere to go.
+3. **Built-in accountability.** Structure tasks so no learner can hide: think-pair-share where either partner may report, group roles that rotate, mini-whiteboards where every learner answers at once.
+
+## The questions you ask while they work
+
+Learner-centred teaching is mostly a questioning discipline:
+
+- **Wait.** After asking, count three full seconds before taking an answer. Research on wait time shows answers get longer, more learners volunteer, and reasoning improves, for free.
+- **Cold-call warmly.** "Hands up" hands the lesson to the same five learners every day. Choose who answers; keep the tone safe; make "I am not sure yet, come back to me" an acceptable first response and then actually come back.
+- **Probe rather than confirm.** The most valuable follow-up questions are: *How do you know? Would that still work if...? Can you say that another way? Does anyone disagree?* Notice that none of these reveal whether the answer was right, which keeps everyone thinking.
+
+>> CASE: A Standard 6 teacher in Machakos taught grammar rules by stating them, until she inverted one lesson. She gave pairs a short text and one instruction: "Find the pattern in how these five sentences begin, and write the rule yourselves." Pairs argued, tested, rewrote. Her rule, revealed at the end, confirmed what most had already constructed. Same content, same 35 minutes. The difference: thirty children built a rule instead of receiving one, and three weeks later most could still apply it.
+
+>> THINK: In your last lesson, estimate honestly: how many minutes did *learners* spend thinking hard, not listening, not copying, thinking? If the number embarrasses you slightly, you are exactly where most good teachers start.
+
+>> TRY: Invert one explanation this week. Pose the problem first, give pairs four minutes of attempt, collect two different approaches on the board, *then* explain. Notice how the explanation changes when it responds to their attempts.`,
+          reflectionPrompt: 'Plan the inversion: choose a topic you normally open by explaining, and script the problem you will pose first, the two or three probing questions you will ask while pairs work, and how you will use their attempts in your explanation.',
+          reflectionPlaceholder: 'Topic: ...\nThe problem I will pose first: ...\nProbing questions I will ask: 1. ... 2. ...\nHow I will fold their attempts into my explanation: ...',
         },
         {
           id: 'l3',
@@ -166,9 +308,33 @@ const cbcFoundations: Program = {
             'Digital resources for CBC teaching',
             'Creating your own classroom materials',
           ],
-          reading: `CBC materials go beyond textbooks. The KICD curriculum designs are supported by approved textbooks, but effective CBC teaching also draws on the local environment, community expertise, and teacher-created materials. A lesson on ecosystems can use the school compound; a lesson on fractions can use locally available fruits.\n\nDigital resources — videos, simulations, and interactive activities — can enrich CBC lessons significantly. Where technology is available, platforms like the Kenya Education Cloud and YouTube channels dedicated to CBC offer supporting content. However, effective CBC teaching does not require technology — the core shift is in pedagogy (how you teach), not tools (what you use).`,
-          reflectionPrompt: 'Identify one locally available resource (material, person, or place) that you could use to enrich an upcoming lesson. How would you use it?',
-          reflectionPlaceholder: 'Resource: ...\nLesson: ...\nHow I would use it: ...',
+          reading: `## One test for every resource
+
+Before this lesson gives you a single list of materials, take its only rule: **a resource is good if it makes learners think, and decorative if it does not**. A projector showing a diagram learners passively watch is decoration. A handful of beans that forces a learner to physically confront why 3 groups of 4 make 12 is technology, in the truest sense. Apply this test ruthlessly and most resource decisions make themselves.
+
+## The textbook: servant, not master
+
+KICD-approved textbooks are written to support the curriculum designs, not to replace them. The design document, not the textbook, defines the outcomes. Practically, this means you plan from the SLO and *then* ask what the textbook offers, rather than letting chapter order become your scheme of work. A textbook exercise is a resource like any other: sometimes the best available, sometimes beaten by three bottle tops and a good question. Teachers who let the textbook drive report "covering" more and their learners retaining less; the book sets a pace no actual class of children has ever matched.
+
+## The free laboratory outside your window
+
+The school compound, the market, the home: these are not backup options for under-resourced schools. They are often *better* than commercial materials, because competence means using knowledge in the real world, and they are the real world:
+
+- **The compound**: ecosystems, measurement (perimeter of the flag area, no rulers, learners must improvise units), soil types, water drainage, data collection (count and classify vehicles passing the gate).
+- **The community**: a parent who keeps bees, a fundi who uses geometry daily without naming it, a grandmother who knows the medicinal plants the science book lists abstractly. One guest with real expertise beats a week of secondhand description.
+- **Improvised materials**: bottle tops for place value, sticks for angle work, flour-paste for models. Treat improvisation as a design discipline, not a hardship: the question is never "what can I find?" but "what does this *outcome* need learners to manipulate?"
+
+## Digital, with honesty
+
+Where devices and connectivity exist, the Kenya Education Cloud, recorded experiments, and simulations genuinely extend what you can show. Two honest cautions. First, a video can create the *feeling* of understanding without the substance; always follow viewing with a task that proves the idea transferred ("now explain it to your partner with the diagram hidden"). Second, the pedagogy shift in CBC requires no electricity whatsoever. A school with no devices and strong questioning is implementing CBC. A smart screen showing learners content they passively consume is not.
+
+>> KEY: Resources do not have a hierarchy of prestige, textbook above beans, screen above compound. They have a hierarchy of *thinking demanded*. Choose whatever makes the cognitive work unavoidable.
+
+>> THINK: What expertise walks past your school gate every single day, in parents, traders, artisans, elders, that your learners' textbooks describe secondhand? Why has the school never asked it in?
+
+>> TRY: For one lesson this week, plan the resource *after* writing the SLO, asking only: "What must learners handle, see, or visit for this outcome to become real?" If the honest answer is "nothing, they need a hard question", that is also a resource decision, and a good one.`,
+          reflectionPrompt: 'Audit one upcoming lesson with the thinking test: what resource does the outcome genuinely need, what would merely decorate, and is there a person, place, or object within walking distance that beats what the textbook offers? Plan exactly how learners will use it, not just see it.',
+          reflectionPlaceholder: 'Lesson and SLO: ...\nWhat the outcome genuinely needs: ...\nWhat would be mere decoration: ...\nMy local resource and how learners will USE it: ...',
         },
       ],
     },
@@ -188,9 +354,35 @@ const cbcFoundations: Program = {
             'Activity sequencing for depth',
             'Planning for differentiation from the start',
           ],
-          reading: `A CBC lesson plan is structured around outcomes, not content. You begin by identifying your SLOs, then work backwards to design activities that lead learners there. The plan includes an Introduction (5–10 minutes to activate prior knowledge and set context), Main Activities (the core learning experience with differentiation), and a Conclusion (reflection, assessment, and closing).\n\nThe most important habit to develop is planning your assessment before you plan your activities. Ask: "How will I know if learners have met the SLO?" Once you have that answer, design activities that give learners the opportunity to demonstrate that capability. This backwards design approach ensures your lesson has a clear purpose and every activity serves the learning outcome.`,
-          reflectionPrompt: 'Design a short lesson plan (introduction + one main activity + assessment) for any topic you are teaching next week.',
-          reflectionPlaceholder: 'Topic: ...\nSLO: By the end learners will be able to...\nIntroduction (hook): ...\nMain activity: ...\nAssessment: I will know they\'ve achieved the SLO by...',
+          reading: `## Plan the ending first
+
+Most lesson plans are written forwards: pick a topic, choose activities, and hope assessment fits at the end. Strong CBC plans are written **backwards**, a discipline known internationally as backward design (Wiggins and McTighe), and it has exactly three steps, in this order:
+
+1. **Outcome.** What will learners be able to do? (Your SLO, verb and all.)
+2. **Evidence.** What will I accept as proof, from *every* learner, not just volunteers? Decide this *before* thinking about activities.
+3. **Experiences.** Now, and only now, design activities, chosen because they manufacture that evidence.
+
+The order is the whole trick. Teachers who choose activities first end up with engaging lessons that prove nothing; the activity was chosen for its energy, not its evidence. Teachers who choose evidence first find activities almost design themselves.
+
+## The shape of the lesson
+
+The familiar Kenyan plan structure, introduction, development, conclusion, holds, but each part earns its place:
+
+| Phase | Its real job | The trap to avoid |
+| --- | --- | --- |
+| Introduction (5-8 min) | Activate what learners already know and make them *want* the answer. The curriculum design's key inquiry questions are ready-made hooks. | "Last week we did X, today we will do Y", informs, but awakens nothing. |
+| Development (20-25 min) | Learners work toward the outcome, attempt, instruction, application. Differentiation is *planned here*, not improvised. | The teacher performs while learners watch; the bell decides when thinking ends. |
+| Conclusion (5-7 min) | Collect the evidence you specified in step 2, from everyone. | "Any questions? Good." Silence is not data. |
+
+Two refinements separate adequate plans from strong ones. First, **plan for the learner who finishes in four minutes and the one who needs fourteen** before the lesson, an extension question for the first, a scaffold (a hint card, a worked first step, a peer pairing) for the second. Improvised differentiation is usually just "help the slow ones while the fast ones get bored". Second, **share success criteria**: tell learners, in their language, what a good answer will include. Better still, show a strong and a weak example and let them tell you the difference. Learners who know what success looks like start managing their own progress, which is the competency Learning to Learn, arriving by design.
+
+>> CASE: A Grade 6 mathematics teacher in Embu planned a lesson on area of irregular shapes backwards. Evidence decided first: "each learner estimates the area of our staffroom's L-shaped floor and defends the estimate in one sentence." Only then did she pick activities: grid-paper practice, then the actual corridor with string and chalk. Her old plan for this topic had learners colouring rectangles. Same SLO on paper; an entirely different lesson, because the evidence was chosen first.
+
+>> KEY: A lesson plan is a hypothesis: "if learners do these things, they will be able to demonstrate this outcome." The conclusion of the lesson is where you test the hypothesis. If you never collect the evidence, you are not planning, you are scheduling.
+
+>> TRY: Write tomorrow's plan in reverse order on a single page: outcome at the top, evidence in the middle, activities last. Many teachers report this one structural change does more for their planning than any template ever did.`,
+          reflectionPrompt: 'Design one lesson fully backwards and write it here: the SLO, the evidence you will collect from every learner (not volunteers), your planned extension for the fast finisher, and your planned scaffold for the learner who struggles.',
+          reflectionPlaceholder: 'SLO: By the end, learners will be able to...\nEvidence from EVERY learner: ...\nExtension for the fast finisher: ...\nScaffold for the struggling learner: ...\nMain activity (chosen last): ...',
         },
         {
           id: 'l2',
@@ -203,9 +395,33 @@ const cbcFoundations: Program = {
             'Cumulative records and portfolios',
             'Efficient record-keeping systems',
           ],
-          reading: `CBC requires ongoing documentation of learner progress. This includes lesson plans, attendance records, learner performance records, anecdotal notes, and portfolio evidence. While this can feel overwhelming at first, developing efficient habits makes it manageable.\n\nPractical strategies: use a simple observation template that fits on one page per week; during activities, carry sticky notes to jot observations; at the end of each lesson, spend 3 minutes updating your class register with brief notes (strong, developing, emerging) for each learner. The goal is a running picture of each learner\'s growth, not a perfect snapshot on any single day.`,
-          reflectionPrompt: 'What record-keeping system do you currently use? What one change would make it more useful for tracking individual learner progress?',
-          reflectionPlaceholder: 'Currently I...\nOne change I could make: ...\nThis would help because...',
+          reading: `## Records that serve teaching, not inspection
+
+Be honest about why most records get written: because someone might check. Records written for inspection are dead paper, complete, neat, and never consulted. CBC record keeping has a different test: **a record is good if it changes a future teaching decision**. A note that tells you which six learners cannot yet regroup in subtraction changes Monday's starter. A page of ticks tells you nothing you will ever act on. Write for the first purpose and inspection takes care of itself.
+
+## What is actually worth recording
+
+CBC performance is described against four levels: **Exceeds expectations, Meets expectations, Approaches expectations, Below expectations**. The levels only mean something when they are anchored to a specific outcome, "Meets expectations *at making inferences from a text*", never as a general grade for a child. Three kinds of record carry almost all the value:
+
+1. **Progress against specific outcomes.** A simple class grid, learners down the side, the term's key SLOs across the top, filled with the four levels (or initials: E, M, A, B). Ten seconds per learner per outcome, and at a glance you can see both a child's profile and an outcome the whole class missed.
+2. **Anecdotal notes, for significant moments only.** Do not narrate every lesson. Record the surprising: the quiet learner who gave the best justification this term, the persistent misconception, the leap. Two sentences with a date. These notes write your end-of-term comments and your parent conversations for you.
+3. **Portfolio evidence, learner-curated.** A portfolio is not a folder of everything; it is a small set of *chosen* work that shows growth. Make learners choose what enters it and require one sentence: "I chose this because...". The choosing is itself assessment, learners judging their own work against criteria, and it transfers part of the record-keeping burden to its rightful owners.
+
+## The sustainability system
+
+The collapse pattern is always the same: a beautiful system in week one, abandoned by week five. Sustainable systems are built on sampling, not coverage:
+
+- **Five learners a day.** Deliberately observe five (a rotating list), not all forty. Every child gets focused attention roughly weekly, which is more than "watch everyone" ever truly delivers.
+- **Three minutes, same time, every day.** Update the grid immediately after the last lesson, while memory is fresh. Daily three-minute habits survive; Saturday backlogs do not.
+- **Shorthand without guilt.** E/M/A/B plus an occasional word. The record's value is in its pattern over weeks, not the prose of any entry.
+
+>> CASE: A Grade 3 teacher in Bungoma kept one A4 grid per learning area and a sticky-note pad in her pocket. During group work she wrote at most three notes a day, only surprises. At week's end, transferring notes took ten minutes. When a parent asked in October why their son's reading level had been moved, she answered with five dated observations spanning two terms. The parent stopped doubting the system; so, she admits, did she.
+
+>> THINK: Find one record you have kept this term. Has it changed a single teaching decision? If yes, you already know what good looks like, make more of that. If no, what would you have needed to record instead for it to have mattered?
+
+>> TRY: Rule one class-grid this weekend: learners down the side, this term's five most important SLOs across the top. Fill it from memory tonight, gaps included. The gaps are the point: they show you which learners you have no evidence about at all.`,
+          reflectionPrompt: 'Look at your current records with the one test that matters: which record last changed a teaching decision you made, and which records exist only because someone might check? Describe the smallest sustainable system (sampling, shorthand, fixed time) you could actually keep for the rest of the term.',
+          reflectionPlaceholder: 'A record that genuinely changed my teaching: ...\nRecords I keep only for inspection: ...\nMy smallest sustainable system: each day I will... taking no more than... minutes',
         },
         {
           id: 'l3',
@@ -218,44 +434,71 @@ const cbcFoundations: Program = {
             'Engaging parents as learning partners at home',
             'Handling resistance and concerns positively',
           ],
-          reading: `Many parents trained under 8-4-4 and equate "good education" with exercise books full of written work and regular examinations. When they see their child doing project work, group activities, and continuous assessment, they may worry. Your job is to help them understand the why behind CBC — that it is preparing their children for a world that demands skills, not just certificates.\n\nEffective parent communication about CBC uses familiar language: "Instead of memorising facts, your child is learning how to think and solve problems." Invite parents into the classroom once a term to observe an activity. Send home brief notes explaining what their child learned and how they can support it. When parents feel like partners in the learning process, they become advocates for CBC, not critics.`,
-          reflectionPrompt: 'Write 2–3 sentences you could use to explain CBC to a parent who is concerned that their child isn\'t doing enough "bookwork".',
-          reflectionPlaceholder: 'What I would say: ...',
+          reading: `## Start from respect, not correction
+
+When a parent complains that their child's exercise book is too empty, hear what they are actually saying: *I care about this child's future, and the only dashboard I have ever known for it is bookwork and marks.* That parent passed through 8-4-4. Their definition of a good education was earned honestly. Treating their concern as ignorance to be corrected loses them; treating it as love that needs a better dashboard wins them. Every technique in this lesson rests on that reframe.
+
+It helps to remember that CBC policy itself names **parental empowerment and engagement** as a pillar of the curriculum, parents are designed into this reform, not bolted on. The teacher who communicates well is implementing the curriculum, not doing public relations.
+
+## Replace the old dashboard, concretely
+
+Telling parents "CBC develops competencies" replaces something concrete with something abstract, and abstractions lose to full exercise books every time. Replace concrete with concrete:
+
+- **Show the work itself.** Once a term, run a fifteen-minute portfolio conversation: the child walks the parent through three pieces they chose, explaining what improved between piece one and piece three. A parent who has watched their own child *explain their growth* never asks about empty exercise books again. The child does the convincing; you only host.
+- **Send evidence, not adjectives.** "Amina is doing well" reassures for a day. "This week Amina measured the shamba plot and converted the units herself, ask her to pace out your kitchen tonight" gives the parent something to *see* and a part to *play*.
+- **Give them their role back.** Many parents fear CBC means expensive materials and projects they cannot support. Tell them the truth: the most powerful home contribution is conversation. "Ask your child to teach you what they learned, the explaining is the revision." A parent who cannot read English can still do this in any language, and it is worth more than bought manila paper.
+
+## When resistance stays
+
+Some scepticism survives all of this, often arriving as: *"All this is fine, but will my child pass?"* Do not dodge it; the question deserves a straight answer. Assessment in this system includes school-based assessments feeding national records, and the deeper preparation for any examination is the ability to read an unfamiliar question, reason about it, and explain an answer, which is precisely what competency-based teaching practises daily. A child who can apply knowledge to a new situation is exam-ready *and* life-ready; a child who can only recall is, at best, half of one.
+
+| Instead of saying | Say |
+| --- | --- |
+| "CBC develops 21st-century competencies." | "Your daughter is learning to use what she knows, ask her to show you tonight." |
+| "We no longer focus on exams." | "She is practising the exact skill exams reward: facing a new problem and reasoning through it." |
+| "Group work builds collaboration." | "She had to explain her method until her partner could use it, that is how you prove you really know something." |
+
+>> THINK: Picture your most sceptical parent, the specific face. What evidence would convince *you*, in their seat, with their history? Now ask honestly: has your classroom produced that evidence yet, and has it ever travelled home?
+
+>> TRY: This week, send home three sentences about one specific learner: what they can now do, one concrete example, and one thing to try at home together. Count the cost (four minutes) against the return when that parent next meets you.`,
+          reflectionPrompt: 'Script your answer to the hardest honest question a parent can ask you: "All these activities are fine, but will my child pass the examination?" Write what you would actually say, in the language you would say it in, with one piece of evidence from your own classroom.',
+          reflectionPlaceholder: 'My answer, word for word: ...\nThe evidence from my classroom I would point to: ...',
         },
       ],
     },
   ],
   preAssessment: [
-    { id: 'q1', question: 'What does CBC stand for?', options: ['Content-Based Curriculum', 'Competency-Based Curriculum', 'Classroom-Based Curriculum', 'Core-Based Curriculum'], correct: 1, explanation: 'CBC stands for Competency-Based Curriculum — it focuses on developing competencies (skills + values + knowledge) rather than content alone.' },
-    { id: 'q2', question: 'How many core competencies does CBC identify?', options: ['5', '6', '7', '8'], correct: 2, explanation: 'CBC identifies 7 core competencies: Communication & Collaboration, Critical Thinking, Creativity, Citizenship, Digital Literacy, Learning to Learn, and Self-Efficacy.' },
-    { id: 'q3', question: 'What replaces "subjects" as the organisational structure in CBC?', options: ['Topics', 'Units', 'Strands and Sub-strands', 'Chapters'], correct: 2, explanation: 'CBC organises each learning area into Strands (broad areas) and Sub-strands (specific topics).' },
-    { id: 'q4', question: 'What does SLO stand for in CBC?', options: ['Standard Learning Objective', 'Specific Learning Outcome', 'Student Learning Output', 'Subject Learning Order'], correct: 1, explanation: 'SLO = Specific Learning Outcome — a measurable statement of what learners should be able to do by lesson\'s end.' },
-    { id: 'q5', question: 'In CBC, assessment is primarily meant to:', options: ['Rank learners at the end of term', 'Measure what was memorised', 'Inform teaching and support learner growth', 'Replace national examinations'], correct: 2, explanation: 'CBC assessment is formative — it informs the teacher and supports the learner\'s ongoing growth.' },
-    { id: 'q6', question: 'Which describes a learner-centred lesson?', options: ['Teacher lectures for most of the lesson', 'Learners copy notes from the board', 'Learners actively construct knowledge through activities', 'The textbook determines the lesson structure'], correct: 2, explanation: 'Learner-centred means learners are actively engaged — discovering, creating, collaborating — rather than passively receiving information.' },
+    { id: 'q1', question: 'Ms. Achieng explains photosynthesis clearly, learners copy a summary, and on Friday every learner scores well on a recall quiz. What can she safely conclude?', options: ['Learners have developed the competency', 'Learners can recall the content; whether they can use it is still unknown', 'The lesson was learner-centred', 'The class is ready for the next strand'], correct: 1, explanation: 'Recall is real but limited evidence. A competency is knowledge, skills and values applied in a situation, and Friday\'s quiz never asked learners to apply anything. This distinction is the heart of the whole program.' },
+    { id: 'q2', question: 'Which of the following is a competency, rather than a piece of content?', options: ['The stages of the water cycle', 'The parts of a flowering plant', 'Using evidence to justify a conclusion', 'The counties of Kenya'], correct: 2, explanation: 'The first, second and fourth are things to know. "Using evidence to justify a conclusion" is something a learner does with what they know, in any subject, for life. Competencies are capabilities, not topics.' },
+    { id: 'q3', question: 'Which of these learning outcomes could you actually assess at the end of a lesson?', options: ['Learners will appreciate the importance of fractions', 'Learners will be aware of water conservation', 'Learners will understand soil erosion', 'Learners will compare two soil samples and explain which erodes faster'], correct: 3, explanation: 'Only the fourth describes something observable. "Appreciate", "be aware" and "understand" cannot be seen or measured, you would never know whether the outcome was met. Assessable outcomes use action verbs with visible evidence.' },
+    { id: 'q4', question: 'A teacher puts learners in groups of five. One learner writes while four watch. What is this lesson missing?', options: ['More time for the activity', 'Bigger groups', 'Individual accountability, so every learner must think', 'A worksheet for each group'], correct: 2, explanation: 'Group seating is not group learning. Without structures that make every learner responsible for thinking (roles, anyone-can-be-asked reporting, individual products), groupwork is 8-4-4 with rearranged furniture.' },
+    { id: 'q5', question: 'A teacher wants to develop critical thinking. Which task demands it?', options: ['Copy the definition of erosion into your book', 'Label the diagram exactly as shown on the board', 'Recite the seven core competencies', 'Decide which of two shamba sites floods less, and defend your choice'], correct: 3, explanation: 'Critical thinking only develops when a task requires choosing, weighing and justifying. The other three tasks can be completed perfectly without a single decision. A task develops a competency only if it cannot be done without it.' },
+    { id: 'q6', question: 'Honestly, what is the main reason most classroom assessment happens in Kenyan schools today?', options: ['To decide what each learner needs next', 'To produce marks for ranking and reporting', 'To help learners see their own progress', 'To test whether the teaching method worked'], correct: 1, explanation: 'There is no shame in this answer, it describes the system most of us trained in. CBC asks assessment to do the other three jobs as well. Noticing the gap between current practice and that goal is exactly what this program is for.' },
   ],
   postAssessment: [
-    { id: 'q1', question: 'What does CBC stand for?', options: ['Content-Based Curriculum', 'Competency-Based Curriculum', 'Classroom-Based Curriculum', 'Core-Based Curriculum'], correct: 1, explanation: 'CBC = Competency-Based Curriculum.' },
-    { id: 'q2', question: 'How many core competencies does CBC identify?', options: ['5', '6', '7', '8'], correct: 2, explanation: 'CBC has 7 core competencies.' },
-    { id: 'q3', question: 'What replaces "subjects" as the organisational structure in CBC?', options: ['Topics', 'Units', 'Strands and Sub-strands', 'Chapters'], correct: 2, explanation: 'Strands and Sub-strands organise the CBC learning areas.' },
-    { id: 'q4', question: 'What does SLO stand for in CBC?', options: ['Standard Learning Objective', 'Specific Learning Outcome', 'Student Learning Output', 'Subject Learning Order'], correct: 1, explanation: 'SLO = Specific Learning Outcome.' },
-    { id: 'q5', question: 'In CBC, the teacher\'s primary role is:', options: ['Delivering content', 'Facilitating learning experiences', 'Marking examinations', 'Covering the syllabus'], correct: 1, explanation: 'In CBC, teachers facilitate — they design and guide experiences rather than transmit content.' },
-    { id: 'q6', question: 'Backwards design in lesson planning means:', options: ['Starting from the textbook', 'Starting from the assessment to plan activities', 'Teaching the last topic first', 'Ending with the introduction'], correct: 1, explanation: 'Backwards design: start with what you want learners to achieve (SLO + assessment), then design activities to get there.' },
+    { id: 'q1', question: 'A Grade 5 SLO reads: "classify materials by whether they conduct heat." Which evidence shows the outcome was met?', options: ['Learners recite the definition of a conductor', 'Learners copy a sorted table from the board', 'Each learner sorts real objects and says why each goes where it goes', 'Learners watch the teacher demonstrate sorting'], correct: 2, explanation: 'The verb is "classify", so the evidence must be the learner classifying, with justification showing it was not guesswork. Reciting, copying and watching are evidence of memory and attention, not of the outcome.' },
+    { id: 'q2', question: 'You are planning backwards. You have written the SLO. What do you decide next?', options: ['Which textbook pages to use', 'The introduction hook', 'What evidence you will accept from every learner that the SLO was met', 'How to arrange the groups'], correct: 2, explanation: 'Backward design is outcome, then evidence, then activities. Deciding evidence second is the discipline that stops you choosing activities for their energy rather than their proof.' },
+    { id: 'q3', question: 'A parent says: "All these activities are fine, but will my child pass the exam?" Your strongest honest answer is:', options: ['"Exams no longer matter under CBC."', '"Reasoning through unfamiliar problems is the core exam skill, and we practise it daily. Let me show you her portfolio."', '"That is KNEC\'s responsibility, not the school\'s."', '"We will add more revision worksheets next term."'], correct: 1, explanation: 'It answers the real fear, with evidence, without dismissing exams or abandoning the pedagogy. A child who can face an unfamiliar question and reason is exam-ready and life-ready; recall alone is neither.' },
+    { id: 'q4', question: 'Your lesson went exactly as planned, but a week later learners cannot apply the idea to a slightly new problem. The most likely cause is:', options: ['The learners did not revise at home', 'Your activities only ever asked for recall, so transfer was never practised', 'The topic needs to be retaught more slowly', 'The class needs more discipline'], correct: 1, explanation: 'Transfer must be rehearsed, not hoped for. If no task in the lesson required applying the idea in a new situation, the first time learners ever tried was your follow-up, a design gap, not a learner failure.' },
+    { id: 'q5', question: 'Which record would best help you decide what to teach Monday morning?', options: ['A neat register of marks out of ten for last week', 'A grid showing each learner\'s level (E/M/A/B) against the specific outcome "adds fractions with unlike denominators"', 'A file of all learners\' work since January', 'Last term\'s position-in-class ranking'], correct: 1, explanation: 'A record earns its keep by changing a teaching decision. The criterion-referenced grid tells you exactly who needs what next on a named outcome; marks, piles and rankings describe the past without directing the future.' },
+    { id: 'q6', question: 'Two lessons on the same SLO: in lesson A the teacher explains brilliantly and learners take excellent notes. In lesson B the teacher explains briefly, then learners use the idea on a new problem and defend their answers in pairs. Which is more CBC-aligned, and why?', options: ['A, because clear explanation shows strong teaching', 'B, because the learners did the thinking and produced evidence of the outcome', 'A, because notes help revision for assessment', 'Neither, because CBC requires group projects'], correct: 1, explanation: 'The question is never "did the teacher perform well?" but "who did the cognitive work, and what evidence exists?" Lesson B made every learner think and produced assessable evidence. Note that B still includes explanation, CBC relocates teacher expertise, it does not delete it.' },
   ],
   assignment: {
-    title: 'My CBC Alignment Reflection',
-    context: 'You have completed the CBC Foundations program. Now it\'s time to apply your learning to your own classroom context.',
-    task: 'Write a structured reflection (300–500 words) describing: (1) One specific aspect of your teaching you will change to be more CBC-aligned, (2) How this change connects to the competencies CBC aims to develop, (3) What challenges you anticipate and how you plan to address them.',
+    title: 'Redesign One Real Lesson',
+    context: 'Theory proves itself in a redesign. Choose one lesson you have actually taught this term, one that you now see was content-focused, and rebuild it using the tools from this program: backward design, an assessable SLO, a task that forces a competency, and planned evidence from every learner.',
+    task: 'Write a before-and-after redesign (350–550 words): (1) BEFORE: the lesson as you originally taught it, what learners did, and what evidence of learning you actually collected. Be honest. (2) AFTER: the redesigned lesson, the assessable SLO with its verb, the evidence you will accept from every learner, the main task and the competency it cannot be completed without, and your planned scaffold and extension. (3) THE BET: in two or three sentences, state what you predict will be visibly different in learners\' behaviour, and how you will know if you were wrong.',
     hints: [
-      'Be specific — choose one lesson, one topic, or one habit rather than trying to change everything at once',
-      'Connect your change to at least one of the 7 core competencies',
-      'Be honest about challenges — they\'re real and acknowledging them is part of professional growth',
+      'Choose a lesson that genuinely went flat, redesigning your best lesson teaches you little',
+      'Write the evidence before the activities; if you wrote activities first, start that section again',
+      'Name the moment in the lesson where you would SEE the competency happening',
+      'If you can teach the redesign before submitting, even better: replace your prediction with what actually happened',
     ],
     rubric: [
-      'Clearly identifies one specific teaching change',
-      'Connects the change to CBC competencies',
-      'Shows understanding of learner-centred principles',
-      'Acknowledges real challenges with thoughtful responses',
-      'Writes in clear, professional language',
+      'The BEFORE is honest about what evidence was (and was not) collected',
+      'The SLO uses an observable verb and the stated evidence matches it',
+      'The main task cannot be completed without the named competency',
+      'Differentiation is planned (a named scaffold and a named extension), not improvised',
+      'The prediction is specific enough that it could be proven wrong',
     ],
   },
   certificate: {
