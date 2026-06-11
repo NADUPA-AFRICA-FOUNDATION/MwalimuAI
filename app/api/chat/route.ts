@@ -1,6 +1,7 @@
 import { streamText, convertToModelMessages } from 'ai'
 import { createOpenAI } from '@ai-sdk/openai'
-import { requireAuth } from '@/lib/require-auth'
+import { requireAuthUser } from '@/lib/require-auth'
+import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
 
 const groq = createOpenAI({
   baseURL: 'https://api.groq.com/openai/v1',
@@ -81,6 +82,7 @@ function groqOnCooldown() {
 }
 
 async function isOllamaAvailable(): Promise<boolean> {
+  if (process.env.VERCEL) return false
   try {
     const res = await fetch('http://localhost:11434/api/tags', {
       signal: AbortSignal.timeout(1500),
@@ -95,12 +97,22 @@ async function isOllamaAvailable(): Promise<boolean> {
 }
 
 export async function POST(req: Request) {
-  const authError = await requireAuth(req)
+  const { userId, error: authError } = await requireAuthUser(req)
   if (authError) return authError
 
-  const { messages, lang, profile, currentLesson } = await req.json()
+  const limit = rateLimit(`chat:${userId}`, 60, 60 * 60 * 1000)
+  if (!limit.ok) return rateLimitResponse(limit)
+
+  let parsed: { messages?: unknown; lang?: string; profile?: never; currentLesson?: never }
+  try { parsed = await req.json() } catch {
+    return Response.json({ error: 'Invalid request body.' }, { status: 400 })
+  }
+  const { messages, lang, profile, currentLesson } = parsed
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return Response.json({ error: 'Messages are required.' }, { status: 400 })
+  }
   // Cap history to last 12 messages to prevent unbounded token growth in long sessions
-  const recentMessages = Array.isArray(messages) ? messages.slice(-12) : messages
+  const recentMessages = messages.slice(-12)
   const converted = await convertToModelMessages(recentMessages)
   const system = buildSystemPrompt(lang, profile, currentLesson)
 

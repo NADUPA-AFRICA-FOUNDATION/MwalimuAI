@@ -1,6 +1,7 @@
 import { streamText, convertToModelMessages } from 'ai'
 import { createOpenAI } from '@ai-sdk/openai'
-import { requireAuth } from '@/lib/require-auth'
+import { requireAuthUser } from '@/lib/require-auth'
+import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
 
 const groq = createOpenAI({
   baseURL: 'https://api.groq.com/openai/v1',
@@ -19,6 +20,7 @@ function markGroqFailed() { groqFailedAt = Date.now() }
 function groqOnCooldown() { return Date.now() - groqFailedAt < GROQ_COOLDOWN_MS }
 
 async function isOllamaAvailable(): Promise<boolean> {
+  if (process.env.VERCEL) return false
   try {
     const res = await fetch('http://localhost:11434/api/tags', { signal: AbortSignal.timeout(1500) })
     if (!res.ok) return false
@@ -64,18 +66,23 @@ Start: When the teacher sends their first message (usually introducing the topic
 }
 
 export async function POST(req: Request) {
-  const authError = await requireAuth(req)
+  const { userId, error: authError } = await requireAuthUser(req)
   if (authError) return authError
 
-  const { messages, lessonPlan, grade, lang } = await req.json() as {
-    messages: unknown[]
-    lessonPlan: string
-    grade:      string
-    lang?:      string
+  const limit = rateLimit(`rehearsal:${userId}`, 60, 60 * 60 * 1000)
+  if (!limit.ok) return rateLimitResponse(limit)
+
+  let parsed: { messages?: unknown; lessonPlan?: string; grade?: string; lang?: string }
+  try { parsed = await req.json() } catch {
+    return Response.json({ error: 'Invalid request body.' }, { status: 400 })
+  }
+  const { messages, lessonPlan, grade, lang } = parsed
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return Response.json({ error: 'Messages are required.' }, { status: 400 })
   }
 
   // Cap history to last 10 messages to prevent unbounded token growth
-  const recentMessages = (messages as unknown[]).slice(-10)
+  const recentMessages = messages.slice(-10)
   const converted = await convertToModelMessages(recentMessages as Parameters<typeof convertToModelMessages>[0])
   const system    = buildSystem(lessonPlan ?? '', grade ?? 'Grade 4', lang)
 

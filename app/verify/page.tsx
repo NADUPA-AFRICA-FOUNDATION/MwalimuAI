@@ -29,18 +29,27 @@ export default function VerifyPage() {
     setCert(null)
     try {
       const supabase = createClient()
-      const { data } = await supabase
-        .from('certificates')
-        .select('serial, program_title, teacher_name, earned_at')
-        .eq('serial', cleaned)
-        .maybeSingle()
+      // Exact-match RPC (no table enumeration); falls back to a direct
+      // lookup if the 013 migration has not been applied yet.
+      let data: Record<string, unknown> | null = null
+      const rpc = await supabase.rpc('verify_certificate', { p_serial: cleaned })
+      if (!rpc.error && Array.isArray(rpc.data)) {
+        data = (rpc.data[0] as Record<string, unknown>) ?? null
+      } else if (rpc.error) {
+        const direct = await supabase
+          .from('certificates')
+          .select('serial, program_title, teacher_name, earned_at')
+          .eq('serial', cleaned)
+          .maybeSingle()
+        data = direct.data
+      }
 
       if (data) {
         setCert({
-          serial:       data.serial,
-          programTitle: data.program_title ?? '',
-          teacherName:  data.teacher_name ?? '',
-          earnedAt:     new Date(data.earned_at).toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' }),
+          serial:       String(data.serial ?? cleaned),
+          programTitle: String(data.program_title ?? ''),
+          teacherName:  String(data.teacher_name ?? ''),
+          earnedAt:     new Date(String(data.earned_at)).toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' }),
         })
         setStatus('valid')
       } else {

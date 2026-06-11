@@ -1,6 +1,7 @@
 import Stripe from 'stripe'
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAuth } from '@/lib/require-auth'
+import { requireAuthUser } from '@/lib/require-auth'
+import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
 
 if (!process.env.STRIPE_SECRET_KEY) {
   console.warn('STRIPE_SECRET_KEY is not set — Stripe checkout will not work.')
@@ -26,8 +27,11 @@ const PLANS: Record<string, { name: string; amount: number; interval: 'month' | 
 }
 
 export async function POST(req: NextRequest) {
-  const authError = await requireAuth(req)
+  const { userId, error: authError } = await requireAuthUser(req)
   if (authError) return authError
+
+  const limit = rateLimit(`checkout:${userId}`, 10, 60 * 60 * 1000)
+  if (!limit.ok) return rateLimitResponse(limit)
 
   if (!stripe) {
     return NextResponse.json(
@@ -54,6 +58,10 @@ export async function POST(req: NextRequest) {
   try {
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
+      // Ties the Stripe session to the authenticated user so the webhook
+      // can record fulfillment against the right account.
+      client_reference_id: userId ?? undefined,
+      metadata: { plan },
       customer_email: customerEmail,
       line_items: [
         {
@@ -73,7 +81,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ url: session.url })
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Checkout session creation failed.'
-    return NextResponse.json({ error: message }, { status: 500 })
+    // Log the detail server-side; never echo Stripe internals to the client
+    console.error('[stripe/checkout] session creation failed:', err)
+    return NextResponse.json({ error: 'Could not start checkout. Please try again shortly.' }, { status: 500 })
   }
 }

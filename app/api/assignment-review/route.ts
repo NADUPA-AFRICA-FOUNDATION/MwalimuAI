@@ -1,6 +1,7 @@
 import { streamText } from 'ai'
 import { createOpenAI } from '@ai-sdk/openai'
-import { requireAuth } from '@/lib/require-auth'
+import { requireAuthUser } from '@/lib/require-auth'
+import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
 
 const groq = createOpenAI({ baseURL: 'https://api.groq.com/openai/v1', apiKey: process.env.GROQ_API_KEY })
 const ollama = createOpenAI({ baseURL: 'http://localhost:11434/v1', apiKey: 'ollama' })
@@ -22,10 +23,23 @@ async function isOllamaAvailable(): Promise<boolean> {
 }
 
 export async function POST(req: Request) {
-  const authError = await requireAuth(req)
+  const { userId, error: authError } = await requireAuthUser(req)
   if (authError) return authError
 
-  const { assignment, submission, rubric, lang } = await req.json()
+  const limit = rateLimit(`assignment-review:${userId}`, 20, 60 * 60 * 1000)
+  if (!limit.ok) return rateLimitResponse(limit)
+
+  let parsed: { assignment?: string; submission?: string; rubric?: unknown; lang?: string }
+  try { parsed = await req.json() } catch {
+    return Response.json({ error: 'Invalid request body.' }, { status: 400 })
+  }
+  const { lang } = parsed
+  const assignment = typeof parsed.assignment === 'string' ? parsed.assignment.slice(0, 4000) : ''
+  const submission = typeof parsed.submission === 'string' ? parsed.submission.slice(0, 8000) : ''
+  const rubric = Array.isArray(parsed.rubric) ? parsed.rubric.filter((r): r is string => typeof r === 'string').slice(0, 10) : []
+  if (!submission.trim()) {
+    return Response.json({ error: 'A submission is required.' }, { status: 400 })
+  }
 
   const langLine = lang === 'sw' ? 'IMPORTANT: Respond in Kiswahili.\n\n' : ''
 

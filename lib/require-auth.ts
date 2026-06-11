@@ -20,3 +20,29 @@ export async function requireAuth(req: Request): Promise<Response | null> {
   }
   return null
 }
+
+/**
+ * Like requireAuth, but also returns the caller's user id so routes can
+ * key per-user rate limits and ownership records.
+ */
+export async function requireAuthUser(
+  req: Request,
+): Promise<{ userId: string; error: null } | { userId: null; error: Response }> {
+  const supabase = await createClient()
+  const token = req.headers.get('Authorization')?.split('Bearer ')[1]
+
+  const { data: { user } } = token
+    ? await supabase.auth.getUser(token)
+    : await supabase.auth.getUser()
+
+  if (!user) {
+    return {
+      userId: null,
+      error: new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    }
+  }
+  return { userId: user.id, error: null }
+}

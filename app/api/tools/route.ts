@@ -1,6 +1,7 @@
 import { streamText } from 'ai'
 import { createOpenAI } from '@ai-sdk/openai'
-import { requireAuth } from '@/lib/require-auth'
+import { requireAuthUser } from '@/lib/require-auth'
+import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
 
 const groq = createOpenAI({
   baseURL: 'https://api.groq.com/openai/v1',
@@ -200,6 +201,8 @@ function markGroqFailed() { groqFailedAt = Date.now() }
 function groqOnCooldown() { return Date.now() - groqFailedAt < GROQ_COOLDOWN_MS }
 
 async function isOllamaAvailable(): Promise<boolean> {
+  // Ollama is a local-dev fallback only; never probe localhost in hosted deploys
+  if (process.env.VERCEL) return false
   try {
     const res = await fetch('http://localhost:11434/api/tags', {
       signal: AbortSignal.timeout(1500),
@@ -226,11 +229,32 @@ const MAX_OUTPUT_TOKENS: Record<string, number> = {
   'parent-comms':         600,
 }
 
+// Generous for real use, hostile to abuse: 30 generations per user per hour
+const RATE_MAX = 30
+const RATE_WINDOW_MS = 60 * 60 * 1000
+const MAX_PROMPT_CHARS = 12_000
+
 export async function POST(req: Request) {
-  const authError = await requireAuth(req)
+  const { userId, error: authError } = await requireAuthUser(req)
   if (authError) return authError
 
-  const { tool, prompt, lang } = await req.json()
+  const limit = rateLimit(`tools:${userId}`, RATE_MAX, RATE_WINDOW_MS)
+  if (!limit.ok) return rateLimitResponse(limit)
+
+  let tool: string, prompt: string, lang: string | undefined
+  try {
+    const body = await req.json()
+    tool = body.tool
+    prompt = body.prompt
+    lang = body.lang
+  } catch {
+    return Response.json({ error: 'Invalid request body.' }, { status: 400 })
+  }
+  if (typeof prompt !== 'string' || !prompt.trim()) {
+    return Response.json({ error: 'A prompt is required.' }, { status: 400 })
+  }
+  prompt = prompt.slice(0, MAX_PROMPT_CHARS)
+
   const base = SYSTEM_PROMPTS[tool] ?? SYSTEM_PROMPTS['lesson-plan']
   const langInstruction = lang === 'sw'
     ? `LUGHA YA MATOKEO: Andika jibu LOTE kwa Kiswahili sanifu — vichwa, orodha, maelezo, na mifano. Hii ni amri ya lazima.

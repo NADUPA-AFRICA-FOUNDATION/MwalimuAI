@@ -1,6 +1,7 @@
 import { generateText } from 'ai'
 import { createOpenAI } from '@ai-sdk/openai'
-import { requireAuth } from '@/lib/require-auth'
+import { requireAuthUser } from '@/lib/require-auth'
+import { rateLimit, rateLimitResponse } from '@/lib/rate-limit'
 
 const groq = createOpenAI({
   baseURL: 'https://api.groq.com/openai/v1',
@@ -15,6 +16,7 @@ const GROQ_MODEL   = process.env.GROQ_MODEL   ?? 'llama-3.1-8b-instant'
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL ?? 'gemma2:2b'
 
 async function isOllamaAvailable(): Promise<boolean> {
+  if (process.env.VERCEL) return false
   try {
     const res = await fetch('http://localhost:11434/api/tags', { signal: AbortSignal.timeout(1500) })
     if (!res.ok) return false
@@ -54,10 +56,17 @@ export interface DetectionResult {
 }
 
 export async function POST(req: Request) {
-  const authError = await requireAuth(req)
+  const { userId, error: authError } = await requireAuthUser(req)
   if (authError) return authError
 
-  const { text } = await req.json() as { text: string }
+  const limit = rateLimit(`detect-ai:${userId}`, 30, 60 * 60 * 1000)
+  if (!limit.ok) return rateLimitResponse(limit)
+
+  let parsed: { text?: unknown }
+  try { parsed = await req.json() } catch {
+    return Response.json({ error: 'Invalid request body.' }, { status: 400 })
+  }
+  const text = typeof parsed.text === 'string' ? parsed.text : ''
 
   if (!text || text.trim().length < 50) {
     return Response.json({ error: 'Text too short to analyse' }, { status: 400 })

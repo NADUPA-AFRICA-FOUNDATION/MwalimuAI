@@ -173,7 +173,16 @@ export default function CommunityPage() {
     const liked    = post.likes.includes(userId)
     const newLikes = liked ? post.likes.filter(l => l !== userId) : [...post.likes, userId]
     setPosts(prev => prev.map(p => p.id === postId ? { ...p, likes: newLikes } : p))
-    await supabase.from('community_posts').update({ likes: newLikes }).eq('id', postId)
+
+    // toggle_post_like only ever toggles the caller's own like (others'
+    // likes can't be tampered with). Falls back to a direct update if the
+    // 013 migration has not been applied yet.
+    const { data, error } = await supabase.rpc('toggle_post_like', { p_post_id: postId })
+    if (!error && Array.isArray(data)) {
+      setPosts(prev => prev.map(p => p.id === postId ? { ...p, likes: data as string[] } : p))
+    } else if (error) {
+      await supabase.from('community_posts').update({ likes: newLikes }).eq('id', postId)
+    }
   }
 
   const openAndFocusReply = (postId: string, e: React.MouseEvent) => {

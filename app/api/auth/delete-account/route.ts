@@ -17,7 +17,8 @@ export async function POST() {
 
   const { error } = await admin.auth.admin.deleteUser(user.id)
   if (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+    console.error('[delete-account] failed:', error)
+    return new Response(JSON.stringify({ error: 'Account deletion failed. Please try again or contact support.' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     })
