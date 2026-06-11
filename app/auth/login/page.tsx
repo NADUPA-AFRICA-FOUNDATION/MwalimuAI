@@ -6,9 +6,10 @@ import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
-import { Eye, EyeOff, GraduationCap, ArrowLeft } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Eye, EyeOff, GraduationCap, ArrowLeft, MonitorSmartphone } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { FORCED_LOGOUT_FLAG } from '@/context/profile-context'
 
 const DARK = 'oklch(0.22 0.08 163)'
 
@@ -28,7 +29,19 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading,    setIsLoading]    = useState(false)
   const [error,        setError]        = useState<string | null>(null)
+  const [deviceNotice, setDeviceNotice] = useState(false)
   const router = useRouter()
+
+  // Shown when this device was signed out because the account was used
+  // to sign in somewhere else (single-device policy).
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem(FORCED_LOGOUT_FLAG)) {
+        setDeviceNotice(true)
+        sessionStorage.removeItem(FORCED_LOGOUT_FLAG)
+      }
+    } catch {}
+  }, [])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -168,6 +181,12 @@ export default function LoginPage() {
                 </div>
               </div>
 
+              {deviceNotice && !error && (
+                <div role="status" className="flex items-start gap-2.5 text-[13px] text-amber-700 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
+                  <MonitorSmartphone className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
+                  <span>You were signed out because your account signed in on another device. Mwalimu AI allows one active device at a time.</span>
+                </div>
+              )}
               {error && (
                 <div role="alert" className="text-[13px] text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-3">
                   {error}

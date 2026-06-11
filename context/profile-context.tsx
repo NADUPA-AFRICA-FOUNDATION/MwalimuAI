@@ -1,7 +1,7 @@
 'use client'
 
 import {
-  createContext, useContext, useState, useEffect, useCallback, type ReactNode,
+  createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode,
 } from 'react'
 import { type User, type Session } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
@@ -46,6 +46,24 @@ const ProfileContext = createContext<ProfileContextType>({
 const PROFILE_KEY  = 'mwalimu_profile'
 const LANG_KEY     = 'mwalimu_lang'
 const USER_ID_KEY  = 'mwalimu_user_id'
+const DEVICE_KEY   = 'mwalimu_device_id'
+export const FORCED_LOGOUT_FLAG = 'mwalimu_signedout_other_device'
+
+// Stable per-browser device id used to enforce one-active-device-per-account.
+function getDeviceId(): string {
+  try {
+    let id = localStorage.getItem(DEVICE_KEY)
+    if (!id) {
+      id = (typeof crypto !== 'undefined' && 'randomUUID' in crypto)
+        ? crypto.randomUUID()
+        : Math.random().toString(36).slice(2) + Date.now().toString(36)
+      localStorage.setItem(DEVICE_KEY, id)
+    }
+    return id
+  } catch {
+    return 'unknown-device'
+  }
+}
 
 // All keys that belong to a specific user — cleared when a DIFFERENT user signs in.
 const ALL_USER_KEYS = [
@@ -146,6 +164,10 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   // Stable client — one instance per provider lifecycle so all writes share
   // the same auth session and onAuthStateChange fires exactly once.
   const [supabase] = useState(() => createClient())
+  // True while a fresh sign-in is claiming this device; the single-device
+  // watchdog must not run during the claim or it would race and log out
+  // the device that just signed in.
+  const deviceClaimPending = useRef(false)
 
   useEffect(() => {
     // Get initial session
@@ -161,11 +183,30 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     // supabase-js holds its auth lock while dispatching the event, so awaiting
     // other Supabase calls there deadlocks token refresh — the session cookie
     // then expires and the next server-validated navigation logs the user out.
-    const handleSession = async (session: Session | null) => {
+    const handleSession = async (event: string, session: Session | null) => {
         const nextUser = session?.user ?? null
         setUser(nextUser)
 
         if (nextUser) {
+          // ── Single-device enforcement: claim this device on fresh sign-in.
+          // Writing our device id supersedes every other device (their
+          // watchdog signs them out), and signOut({scope:'others'}) revokes
+          // their refresh tokens server-side as a backstop.
+          if (event === 'SIGNED_IN' && typeof window !== 'undefined') {
+            deviceClaimPending.current = true
+            try {
+              await supabase.from('profiles').upsert({
+                id: nextUser.id,
+                active_session_id: getDeviceId(),
+                updated_at: new Date().toISOString(),
+              })
+              await supabase.auth.signOut({ scope: 'others' })
+            } catch (err) {
+              console.error('[mwalimu] device claim failed:', err)
+            }
+            deviceClaimPending.current = false
+          }
+
           // Reset syncReady so the dashboard waits for fresh cloud data
           setSyncReady(false)
 
@@ -264,16 +305,62 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     }
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      (event, session) => {
         // Defer all work out of the callback so the auth lock is released
         // immediately (see comment on handleSession above).
-        setTimeout(() => { void handleSession(session) }, 0)
+        setTimeout(() => { void handleSession(event, session) }, 0)
       }
     )
 
     return () => subscription.unsubscribe()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // ── Single-device watchdog ──────────────────────────────────────
+  // While signed in, periodically (and on tab focus) compare this browser's
+  // device id with profiles.active_session_id. If another device has claimed
+  // the account, sign this one out locally and explain why on the login page.
+  useEffect(() => {
+    if (!user || typeof window === 'undefined') return
+    let cancelled = false
+
+    const check = async () => {
+      if (cancelled || deviceClaimPending.current) return
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('active_session_id')
+          .eq('id', user.id)
+          .maybeSingle()
+        if (cancelled || error || !data) return // column missing pre-migration → no enforcement
+
+        const remote = data.active_session_id as string | null
+        const local  = getDeviceId()
+        if (!remote) {
+          // Legacy session with no claim yet: claim quietly for this device
+          await supabase.from('profiles').update({ active_session_id: local }).eq('id', user.id)
+        } else if (remote !== local) {
+          try { sessionStorage.setItem(FORCED_LOGOUT_FLAG, '1') } catch {}
+          await flushWrites()
+          await supabase.auth.signOut({ scope: 'local' })
+          // onAuthStateChange's signed-out branch + the dashboard auth guard
+          // handle cleanup and the redirect to /auth/login.
+        }
+      } catch {}
+    }
+
+    void check()
+    const interval = setInterval(check, 60_000)
+    const onFocus = () => { void check() }
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onFocus)
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onFocus)
+    }
+  }, [user, supabase])
 
   const setProfile = useCallback(async (p: TeacherProfile) => {
     setProfileState(p)
@@ -327,6 +414,10 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   }, [user, supabase])
 
   const signOut = useCallback(async () => {
+    // Release the device claim so the next sign-in (any device) starts clean.
+    if (user) {
+      try { await supabase.from('profiles').update({ active_session_id: null }).eq('id', user.id) } catch {}
+    }
     // Drain all in-flight writes before invalidating the session token.
     await flushWrites()
     // Stamp the user ID so same-user re-login recognises the local cache
