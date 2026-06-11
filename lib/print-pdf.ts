@@ -1,7 +1,12 @@
 /**
  * Mwalimu AI — PDF Generator
- * Generates a real PDF file using html2canvas + jsPDF.
- * No browser print dialog → no URL/date/page-number artifacts.
+ * Draws the document directly with jsPDF's vector/text API.
+ *
+ * Why not html2canvas: it crashes on Tailwind v4's oklch() colors (so the
+ * download never fired), its injected <style> leaked global CSS into the
+ * live app while capturing, and its canvas slicing cut text lines in half
+ * at page boundaries. Direct drawing gives selectable text, small files,
+ * clean page breaks, and a guaranteed automatic download.
  */
 
 export type PDFType = 'lesson-plan' | 'feedback' | 'policy' | 'research' | 'default'
@@ -23,360 +28,140 @@ const BRAND_TEAL  = '#0c9a7b'
 const BRAND_DEEP  = '#0a7d64'
 const BRAND_LIGHT = '#edfaf6'
 const BRAND_MID   = '#b6eed8'
-const BRAND_INK   = '#0a7d64'
 const BRAND_AMBER = '#c98900'
 
 const TYPE_CFG: Record<PDFType, TypeCfg> = {
-  'lesson-plan': { bg: BRAND_TEAL, bgDeep: BRAND_DEEP, bgLight: BRAND_LIGHT, bgMid: BRAND_MID, ink: BRAND_INK, amber: BRAND_AMBER, label: 'Lesson Plan' },
+  'lesson-plan': { bg: BRAND_TEAL, bgDeep: BRAND_DEEP, bgLight: BRAND_LIGHT, bgMid: BRAND_MID, ink: BRAND_DEEP, amber: BRAND_AMBER, label: 'Lesson Plan' },
   'feedback':    { bg: '#059669',  bgDeep: '#047857',  bgLight: '#f0fdf4',  bgMid: '#bbf7d0', ink: '#047857', amber: '#d97706',  label: 'CBC Feedback' },
   'policy':      { bg: '#d97706',  bgDeep: '#b45309',  bgLight: '#fffbeb',  bgMid: '#fde68a', ink: '#b45309', amber: BRAND_TEAL, label: 'Policy Brief' },
   'research':    { bg: '#6d28d9',  bgDeep: '#5b21b6',  bgLight: '#f5f3ff',  bgMid: '#ddd6fe', ink: '#5b21b6', amber: BRAND_AMBER, label: 'Action Research' },
-  'default':     { bg: BRAND_TEAL, bgDeep: BRAND_DEEP, bgLight: BRAND_LIGHT, bgMid: BRAND_MID, ink: BRAND_INK, amber: BRAND_AMBER, label: 'Document' },
+  'default':     { bg: BRAND_TEAL, bgDeep: BRAND_DEEP, bgLight: BRAND_LIGHT, bgMid: BRAND_MID, ink: BRAND_DEEP, amber: BRAND_AMBER, label: 'Document' },
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Main export — async, downloads a true PDF file with no browser artifacts
-// ─────────────────────────────────────────────────────────────────────────────
-export async function printPDF({ title, subtitle, meta, content, type = 'default' }: PrintOptions): Promise<void> {
-  const cfg  = TYPE_CFG[type]
-  const date = new Date().toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' })
-  const body = mdToHtml(content, cfg)
+// ── Geometry (mm, A4 portrait) ──────────────────────────────────────────────
+const PAGE_W = 210
+const PAGE_H = 297
+const ML     = 18
+const MR     = 18
+const CW     = PAGE_W - ML - MR     // 174
+const FOOT_H = 13
+const BOTTOM = PAGE_H - FOOT_H - 7  // last usable content baseline
+const TOP_NEXT = 18                 // content top on pages 2+
 
-  // ── 1. Build hidden off-screen container ──────────────────────────────────
-  // Must use position:absolute with positive coordinates — html2canvas crops
-  // using getBoundingClientRect(), and Canvas APIs silently return blank pixels
-  // for negative coordinates (position:fixed left:-9999px was producing blank PDFs).
-  const container = document.createElement('div')
-  container.setAttribute('aria-hidden', 'true')
-  const docBottom = Math.max(
-    document.body.scrollHeight,
-    document.documentElement.scrollHeight,
-    window.scrollY + window.innerHeight,
-  ) + 50
-  Object.assign(container.style, {
-    position:      'absolute',
-    top:           `${docBottom}px`,
-    left:          '0',
-    width:         '820px',
-    background:    '#ffffff',
-    zIndex:        '-1',
-    pointerEvents: 'none',
-    overflow:      'visible',
-  })
+// ── Color helpers (no GState needed: blend against the known backdrop) ─────
+type RGB = [number, number, number]
 
-  // Inject print CSS (no @media print block — html2canvas uses screen rendering)
-  const styleEl = document.createElement('style')
-  styleEl.textContent = buildCSS(cfg)
-  container.appendChild(styleEl)
-
-  // Inject document HTML
-  const docEl = document.createElement('div')
-  docEl.innerHTML = buildHTML(cfg, title, subtitle, date, meta, body)
-  container.appendChild(docEl)
-
-  document.body.appendChild(container)
-
-  try {
-    // ── 2. Ensure fonts are loaded before capture ─────────────────────────
-    await document.fonts.ready
-
-    // ── 3. Capture with html2canvas ───────────────────────────────────────
-    const { default: html2canvas } = await import('html2canvas')
-    const canvas = await html2canvas(docEl, {
-      scale:           2,          // 2× pixel ratio for crisp output
-      useCORS:         true,
-      logging:         false,
-      backgroundColor: '#ffffff',
-      windowWidth:     820,
-      // html2canvas windowBounds uses scrollX/scrollY as positive offsets
-      // matching window.pageXOffset / pageYOffset (the defaults). Passing them
-      // explicitly prevents the library from reading a stale value during the
-      // async clone phase.
-      scrollX:         window.scrollX,
-      scrollY:         window.scrollY,
-    })
-
-    // ── 4. Slice canvas into A4 pages and build PDF ───────────────────────
-    const { jsPDF } = await import('jspdf')
-
-    const A4_W_MM = 210   // A4 width in mm
-    const A4_H_MM = 297   // A4 height in mm
-
-    // How many canvas pixels correspond to one A4 page height
-    const pageHeightPx = Math.floor(canvas.width * (A4_H_MM / A4_W_MM))
-    const totalPages   = Math.ceil(canvas.height / pageHeightPx)
-
-    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
-
-    for (let i = 0; i < totalPages; i++) {
-      if (i > 0) pdf.addPage()
-
-      // Slice this page out of the full canvas
-      const srcY     = i * pageHeightPx
-      const sliceH   = Math.min(pageHeightPx, canvas.height - srcY)
-
-      const pageCanvas       = document.createElement('canvas')
-      pageCanvas.width       = canvas.width
-      pageCanvas.height      = pageHeightPx
-      const ctx              = pageCanvas.getContext('2d')!
-      ctx.fillStyle          = '#ffffff'
-      ctx.fillRect(0, 0, canvas.width, pageHeightPx)
-      ctx.drawImage(canvas, 0, srcY, canvas.width, sliceH, 0, 0, canvas.width, sliceH)
-
-      pdf.addImage(
-        pageCanvas.toDataURL('image/jpeg', 0.94),
-        'JPEG',
-        0, 0,
-        A4_W_MM, A4_H_MM,
-      )
-    }
-
-    // ── 5. Trigger download ───────────────────────────────────────────────
-    const filename = title
-      .replace(/[^a-z0-9 ·–\-]/gi, '')
-      .replace(/\s+/g, '_')
-      .slice(0, 80)
-    pdf.save(`${filename || 'Mwalimu_AI'}.pdf`)
-
-  } finally {
-    // Always remove the temp container
-    if (container.parentNode) container.parentNode.removeChild(container)
-  }
+function rgb(hex: string): RGB {
+  const h = hex.replace('#', '')
+  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// CSS for the document (screen-only, no @media print needed)
-// ─────────────────────────────────────────────────────────────────────────────
-function buildCSS(cfg: TypeCfg): string {
-  return `
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-
-body,div{font-family:Georgia,Charter,'Palatino Linotype','Book Antiqua',serif;font-size:12.5px;line-height:1.8;color:#1e2d3d;background:#fff;}
-
-/* ── HEADER ── */
-.hdr{background-color:${cfg.bg};color:#fff;display:flex;align-items:stretch;position:relative;overflow:hidden;}
-.hdr-deco1{position:absolute;width:260px;height:260px;background-color:rgba(255,255,255,0.07);border-radius:50%;top:-90px;right:80px;pointer-events:none;}
-.hdr-deco2{position:absolute;width:180px;height:180px;background-color:rgba(255,255,255,0.05);border-radius:50%;bottom:-70px;left:40px;pointer-events:none;}
-.hdr-main{flex:1;padding:28px 44px 26px;position:relative;z-index:1;}
-.hdr-type{width:86px;background-color:${cfg.bgDeep};display:flex;align-items:center;justify-content:center;padding:20px 10px;flex-shrink:0;position:relative;z-index:1;}
-.hdr-type-text{writing-mode:vertical-rl;text-orientation:mixed;transform:rotate(180deg);font-size:10px;font-weight:800;letter-spacing:0.2em;text-transform:uppercase;color:rgba(255,255,255,0.88);font-family:-apple-system,'Segoe UI',Arial,sans-serif;}
-.brand-row{display:flex;align-items:center;gap:11px;margin-bottom:16px;}
-.brand-logo{width:38px;height:38px;background-color:rgba(255,255,255,0.18);border:2px solid rgba(255,255,255,0.35);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;color:#fff;flex-shrink:0;font-family:-apple-system,'Segoe UI',Arial,sans-serif;}
-.brand-name{font-size:14px;font-weight:700;line-height:1.2;color:rgba(255,255,255,0.95);font-family:-apple-system,'Segoe UI',Arial,sans-serif;}
-.brand-tagline{font-size:10.5px;color:rgba(255,255,255,0.6);margin-top:2px;font-family:-apple-system,'Segoe UI',Arial,sans-serif;}
-.hdr-sep{width:40px;height:2px;background-color:rgba(255,255,255,0.28);border-radius:2px;margin-bottom:12px;}
-.doc-title{font-size:23px;font-weight:800;letter-spacing:-0.4px;line-height:1.2;color:#fff;margin-bottom:4px;font-family:-apple-system,'Segoe UI',Arial,sans-serif;}
-.doc-sub{font-size:12px;color:rgba(255,255,255,0.72);font-family:-apple-system,'Segoe UI',Arial,sans-serif;}
-
-/* ── META RIBBON ── */
-.meta-ribbon{background-color:${cfg.bgLight};border-bottom:2px solid ${cfg.bgMid};padding:10px 44px;display:flex;align-items:center;flex-wrap:wrap;gap:5px 12px;font-size:11px;color:${cfg.ink};font-weight:500;font-family:-apple-system,'Segoe UI',Arial,sans-serif;}
-.meta-chip{background-color:${cfg.bg};color:#fff;border-radius:5px;padding:3px 10px;font-size:9.5px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;font-family:-apple-system,'Segoe UI',Arial,sans-serif;}
-.meta-dot{color:${cfg.bgMid};font-size:14px;line-height:1;}
-
-/* ── CONTENT ── */
-.content{padding:0 44px 48px;}
-
-/* ── SECTION HEADERS ── */
-.sh{font-family:-apple-system,'Segoe UI',Arial,sans-serif;font-size:10.5px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:${cfg.bg};padding:0 0 8px 0;margin:32px 0 16px;border-bottom:2px solid ${cfg.bg};}
-.sh-sub{font-family:-apple-system,'Segoe UI',Arial,sans-serif;font-size:10.5px;font-weight:700;letter-spacing:0.09em;text-transform:uppercase;color:${cfg.ink};padding:0 0 0 11px;margin:22px 0 11px;border-left:3px solid ${cfg.bg};line-height:1.5;}
-
-/* ── ACTIVITY CARDS ── */
-.act-hdr{display:flex;align-items:center;gap:10px;margin:20px 0 10px;background-color:${cfg.bgLight};border:1px solid ${cfg.bgMid};border-left:4px solid ${cfg.bg};border-radius:0 8px 8px 0;padding:10px 14px;}
-.act-num{min-width:28px;height:28px;background-color:${cfg.bg};color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;font-family:-apple-system,'Segoe UI',Arial,sans-serif;}
-.act-title{font-size:13px;font-weight:700;color:#1a2530;flex:1;font-family:-apple-system,'Segoe UI',Arial,sans-serif;}
-.act-time{background-color:${cfg.amber};color:#fff;border-radius:5px;padding:3px 9px;font-size:10px;font-weight:700;white-space:nowrap;font-family:-apple-system,'Segoe UI',Arial,sans-serif;}
-
-/* ── META GRID ── */
-.meta-grid{display:grid;grid-template-columns:1fr 1fr;margin:10px 0 16px;border:1px solid ${cfg.bgMid};border-radius:8px;overflow:hidden;}
-.meta-kv{padding:10px 14px;border-bottom:1px solid ${cfg.bgMid};border-right:1px solid ${cfg.bgMid};}
-.meta-kv:nth-child(2n){border-right:none;}
-.meta-kv:nth-last-child(-n+2){border-bottom:none;}
-.meta-key{font-family:-apple-system,'Segoe UI',Arial,sans-serif;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:${cfg.ink};margin-bottom:3px;}
-.meta-val{font-size:13px;color:#1a2530;font-weight:500;font-family:Georgia,serif;line-height:1.4;}
-
-/* ── TYPOGRAPHY ── */
-p{margin-bottom:9px;line-height:1.8;color:#2a3a4a;}
-ul{list-style:none;padding-left:0;margin:6px 0 13px;}
-ul li{position:relative;padding:2px 0 2px 20px;color:#2a3a4a;line-height:1.72;margin-bottom:3px;}
-ul li::before{content:'•';position:absolute;left:4px;top:1px;color:${cfg.bg};font-size:14px;line-height:1.72;}
-ul.sub{margin:3px 0 6px 18px;}
-ul.sub>li::before{content:'–';color:#7a8fa0;font-size:13px;}
-ol{list-style:none;padding-left:0;margin:6px 0 13px;counter-reset:ol-c;}
-ol li{position:relative;padding:2px 0 2px 26px;counter-increment:ol-c;color:#2a3a4a;line-height:1.72;margin-bottom:4px;}
-ol li::before{content:counter(ol-c)'.';position:absolute;left:0;top:2px;font-size:11.5px;font-weight:700;color:${cfg.bg};font-family:-apple-system,'Segoe UI',Arial,sans-serif;min-width:20px;}
-ol.sub{margin-left:18px;}
-ol.sub>li::before{color:#7a8fa0;font-weight:600;}
-strong{font-weight:700;color:#111e29;}
-em{font-style:italic;}
-code{background-color:${cfg.bgLight};color:${cfg.ink};padding:2px 5px;border-radius:4px;font-family:'Consolas','Courier New',monospace;font-size:11px;border:1px solid ${cfg.bgMid};}
-pre{background:#f6f8fa;border:1px solid #dce2e9;border-left:3px solid ${cfg.bg};border-radius:0 6px 6px 0;padding:12px 16px;margin:10px 0 14px;font-family:'Consolas','Courier New',monospace;font-size:11px;line-height:1.6;}
-pre code{background:none;border:none;padding:0;}
-blockquote{border-left:3px solid ${cfg.bg};padding:10px 16px;margin:12px 0;background-color:${cfg.bgLight};border-radius:0 7px 7px 0;color:#445566;font-style:italic;}
-hr{border:none;height:1px;background:${cfg.bgMid};opacity:0.7;margin:24px 0;}
-table{width:100%;border-collapse:collapse;margin:12px 0 16px;font-size:12px;}
-thead tr{background-color:${cfg.bg};}
-th{color:#fff;font-weight:700;text-align:left;padding:8px 12px;font-size:10.5px;letter-spacing:0.04em;font-family:-apple-system,'Segoe UI',Arial,sans-serif;}
-td{padding:7px 12px;border-bottom:1px solid #e5e9ed;color:#2a3a4a;vertical-align:top;}
-tbody tr:nth-child(even) td{background-color:#f9fafb;}
-
-/* ── FOOTER ── */
-.footer{background-color:${cfg.bgDeep};color:rgba(255,255,255,0.85);padding:11px 44px;margin-top:48px;display:flex;justify-content:space-between;align-items:center;font-size:10.5px;font-family:-apple-system,'Segoe UI',Arial,sans-serif;}
-.footer-brand{font-weight:800;font-size:12px;color:#fff;}
-.footer-mid{font-size:10px;opacity:0.78;}
-.footer-url{font-size:10px;opacity:0.68;}
-`
+function mix(base: RGB, over: RGB, alpha: number): RGB {
+  return [
+    Math.round(base[0] + (over[0] - base[0]) * alpha),
+    Math.round(base[1] + (over[1] - base[1]) * alpha),
+    Math.round(base[2] + (over[2] - base[2]) * alpha),
+  ]
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Document HTML wrapper
-// ─────────────────────────────────────────────────────────────────────────────
-function buildHTML(
-  cfg:      TypeCfg,
-  title:    string,
-  subtitle: string | undefined,
-  date:     string,
-  meta:     string | undefined,
-  body:     string,
-): string {
-  return `
-<header class="hdr">
-  <div class="hdr-deco1"></div>
-  <div class="hdr-deco2"></div>
-  <div class="hdr-main">
-    <div class="brand-row">
-      <div class="brand-logo">M</div>
-      <div>
-        <div class="brand-name">Mwalimu AI</div>
-        <div class="brand-tagline">CBC Professional Development Platform</div>
-      </div>
-    </div>
-    <div class="hdr-sep"></div>
-    <div class="doc-title">${esc(title)}</div>
-    ${subtitle ? `<div class="doc-sub">${esc(subtitle)}</div>` : ''}
-  </div>
-  <div class="hdr-type"><div class="hdr-type-text">${esc(cfg.label)}</div></div>
-</header>
+const WHITE: RGB = [255, 255, 255]
 
-<div class="meta-ribbon">
-  <span class="meta-chip">Mwalimu AI</span>
-  <span class="meta-dot">·</span>
-  <span>${esc(date)}</span>
-  ${meta ? `<span class="meta-dot">·</span><span>${esc(meta)}</span>` : ''}
-  <span class="meta-dot">·</span>
-  <span>CBC-Aligned&nbsp;·&nbsp;Kenya</span>
-</div>
+// ── Markdown → structured blocks (same grammar the old renderer used) ──────
+type Block =
+  | { kind: 'h1'; text: string }
+  | { kind: 'h2'; text: string }
+  | { kind: 'p'; text: string }
+  | { kind: 'quote'; text: string }
+  | { kind: 'hr' }
+  | { kind: 'li'; text: string; ordered: boolean; index: number; sub: boolean }
+  | { kind: 'activity'; num: string; title: string; time?: string }
+  | { kind: 'kv'; pairs: Array<[string, string]> }
 
-<div class="content">${body}</div>
+const ACT_RE = /^Activity\s+(\d+)\s*[–\-]\s*(.+?)(?:\s*\((\d+)\s*min(?:utes?)?\))?$/i
 
-<footer class="footer">
-  <span class="footer-brand">Mwalimu AI</span>
-  <span class="footer-mid">KICD / TSC / KEMI Aligned Professional Development</span>
-  <span class="footer-url">mwalimuai.co.ke</span>
-</footer>
-`
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Markdown → HTML
-// ─────────────────────────────────────────────────────────────────────────────
-function mdToHtml(md: string, cfg: TypeCfg): string {
-  const lines = md.split('\n')
-  const out: string[] = []
-
-  let listStack: Array<{ type: 'ul' | 'ol'; indent: number }> = []
+function parseBlocks(md: string): Block[] {
+  const blocks: Block[] = []
+  const listStack: Array<{ type: 'ul' | 'ol'; indent: number; count: number }> = []
   let kvBuffer: string[] = []
 
-  const closeAllLists = () => {
-    while (listStack.length > 0) out.push(`</${listStack.pop()!.type}>`)
-  }
-
-  const ensureList = (type: 'ul' | 'ol', indent: number) => {
-    while (listStack.length > 0 && listStack[listStack.length - 1].indent > indent) {
-      out.push(`</${listStack.pop()!.type}>`)
-    }
-    const top = listStack[listStack.length - 1]
-    if (top && top.type === type && top.indent === indent) return
-    if (top && top.indent === indent) out.push(`</${listStack.pop()!.type}>`)
-    const subClass = indent > 0 ? ` class="sub"` : ''
-    out.push(`<${type}${subClass}>`)
-    listStack.push({ type, indent })
-  }
+  const closeAllLists = () => { listStack.length = 0 }
 
   const flushKV = () => {
     if (kvBuffer.length === 0) return
     if (kvBuffer.length >= 2) {
-      out.push('<div class="meta-grid">')
-      for (const line of kvBuffer) {
+      const pairs: Array<[string, string]> = kvBuffer.map(line => {
         const ci = line.indexOf(':')
-        if (ci > 0) {
-          const k = line.slice(0, ci).trim()
-          const v = line.slice(ci + 1).trim()
-          out.push(`<div class="meta-kv"><div class="meta-key">${esc(k)}</div><div class="meta-val">${v ? inline(v) : '&mdash;'}</div></div>`)
-        } else {
-          out.push(`<p>${inline(line)}</p>`)
-        }
-      }
-      out.push('</div>')
+        return [line.slice(0, ci).trim(), line.slice(ci + 1).trim()]
+      })
+      blocks.push({ kind: 'kv', pairs })
     } else {
-      out.push(`<p>${inline(kvBuffer[0])}</p>`)
+      blocks.push({ kind: 'p', text: kvBuffer[0] })
     }
     kvBuffer = []
   }
 
-  const ACT_RE = /^Activity\s+(\d+)\s*[–\-]\s*(.+?)(?:\s*\((\d+)\s*min(?:utes?)?\))?$/i
-
-  for (const raw of lines) {
+  for (const raw of md.split('\n')) {
     const line    = raw.trimEnd()
     const trimmed = line.trim()
 
     if (trimmed.startsWith('### ')) {
       closeAllLists(); flushKV()
-      out.push(`<div class="sh-sub">${inline(trimmed.slice(4))}</div>`)
+      blocks.push({ kind: 'h2', text: trimmed.slice(4) })
       continue
     }
     if (trimmed.startsWith('## ') || trimmed.startsWith('# ')) {
       closeAllLists(); flushKV()
-      const text = trimmed.startsWith('## ') ? trimmed.slice(3) : trimmed.slice(2)
-      out.push(`<div class="sh">${inline(text)}</div>`)
+      blocks.push({ kind: 'h1', text: trimmed.startsWith('## ') ? trimmed.slice(3) : trimmed.slice(2) })
       continue
     }
     if (trimmed.startsWith('> ')) {
       closeAllLists(); flushKV()
-      out.push(`<blockquote>${inline(trimmed.slice(2))}</blockquote>`)
+      blocks.push({ kind: 'quote', text: trimmed.slice(2) })
       continue
     }
     if (/^[-*_]{3,}$/.test(trimmed)) {
       closeAllLists(); flushKV()
-      out.push('<hr>')
+      blocks.push({ kind: 'hr' })
       continue
     }
 
     const ulM = line.match(/^(\s*)[-*+] (.*)$/)
     if (ulM) {
       flushKV()
-      ensureList('ul', ulM[1].length)
-      out.push(`<li>${inline(ulM[2])}</li>`)
+      const indent = ulM[1].length
+      while (listStack.length > 0 && listStack[listStack.length - 1].indent > indent) listStack.pop()
+      let top = listStack[listStack.length - 1]
+      if (!top || top.type !== 'ul' || top.indent !== indent) {
+        if (top && top.indent === indent) listStack.pop()
+        listStack.push({ type: 'ul', indent, count: 0 })
+        top = listStack[listStack.length - 1]
+      }
+      blocks.push({ kind: 'li', text: ulM[2], ordered: false, index: 0, sub: indent > 0 })
       continue
     }
 
     const olM = line.match(/^(\s*)\d+[.)]\s+(.*)$/)
     if (olM) {
       flushKV()
-      ensureList('ol', olM[1].length)
-      out.push(`<li>${inline(olM[2])}</li>`)
+      const indent = olM[1].length
+      while (listStack.length > 0 && listStack[listStack.length - 1].indent > indent) listStack.pop()
+      let top = listStack[listStack.length - 1]
+      if (!top || top.type !== 'ol' || top.indent !== indent) {
+        if (top && top.indent === indent) listStack.pop()
+        listStack.push({ type: 'ol', indent, count: 0 })
+        top = listStack[listStack.length - 1]
+      }
+      top.count += 1
+      blocks.push({ kind: 'li', text: olM[2], ordered: true, index: top.count, sub: indent > 0 })
       continue
     }
 
-    if (trimmed === '') {
-      closeAllLists(); flushKV()
-      continue
-    }
+    if (trimmed === '') { closeAllLists(); flushKV(); continue }
 
-    const am = trimmed.match(ACT_RE)
+    const am = trimmed.replace(/^\*\*(.*)\*\*$/, '$1').match(ACT_RE)
     if (am) {
       closeAllLists(); flushKV()
-      const [, num, actTitle, time] = am
-      out.push(`<div class="act-hdr"><div class="act-num">${num}</div><div class="act-title">${esc(actTitle.trim())}</div>${time ? `<div class="act-time">${esc(time)}&thinsp;min</div>` : ''}</div>`)
+      blocks.push({ kind: 'activity', num: am[1], title: am[2].trim(), time: am[3] })
       continue
     }
 
@@ -386,31 +171,402 @@ function mdToHtml(md: string, cfg: TypeCfg): string {
     }
 
     closeAllLists(); flushKV()
-    if (trimmed) out.push(`<p>${inline(trimmed)}</p>`)
+    blocks.push({ kind: 'p', text: trimmed })
   }
 
   closeAllLists()
   flushKV()
-  return out.join('\n').replace(/\n{3,}/g, '\n\n').trim()
+  return blocks
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────────────────────────────────────
-function inline(t: string): string {
-  return t
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
-    .replace(/\*\*(.+?)\*\*/g,     '<strong>$1</strong>')
-    .replace(/___(.+?)___/g,       '<strong><em>$1</em></strong>')
-    .replace(/__(.+?)__/g,         '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g,         '<em>$1</em>')
-    .replace(/_([^_\s][^_]*)_/g,   '<em>$1</em>')
-    .replace(/`(.+?)`/g,           '<code>$1</code>')
+// ── Inline markdown → styled runs ───────────────────────────────────────────
+interface Run { text: string; bold: boolean; italic: boolean; code: boolean }
+
+function parseRuns(s: string): Run[] {
+  const runs: Run[] = []
+  let bold = false, italic = false, code = false
+  let buf = ''
+  const push = () => { if (buf) { runs.push({ text: buf, bold, italic, code }); buf = '' } }
+  let i = 0
+  while (i < s.length) {
+    if (s.startsWith('***', i) || s.startsWith('___', i)) { push(); bold = !bold; italic = !italic; i += 3; continue }
+    if (s.startsWith('**', i)  || s.startsWith('__', i))  { push(); bold = !bold; i += 2; continue }
+    if (s[i] === '*') { push(); italic = !italic; i += 1; continue }
+    if (s[i] === '`') { push(); code = !code; i += 1; continue }
+    if (s[i] === '_' && (italic || i === 0 || /[\s(]/.test(s[i - 1]))) { push(); italic = !italic; i += 1; continue }
+    buf += s[i]; i += 1
+  }
+  push()
+  return runs
 }
 
-function esc(s: string): string {
-  return s
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+function plain(s: string): string {
+  return parseRuns(s).map(r => r.text).join('')
+}
+
+// ── Main export ─────────────────────────────────────────────────────────────
+export async function printPDF({ title, subtitle, meta, content, type = 'default' }: PrintOptions): Promise<void> {
+  const { jsPDF } = await import('jspdf')
+  const cfg  = TYPE_CFG[type]
+  const date = new Date().toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' })
+
+  const BG    = rgb(cfg.bg)
+  const DEEP  = rgb(cfg.bgDeep)
+  const LIGHT = rgb(cfg.bgLight)
+  const MID   = rgb(cfg.bgMid)
+  const INK   = rgb(cfg.ink)
+  const AMBER = rgb(cfg.amber)
+  const BODY: RGB  = [42, 58, 74]
+  const TITLE_INK: RGB = [17, 30, 41]
+
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+  let y = 0
+
+  // ── low-level helpers ──────────────────────────────────────────
+  const setFill   = (c: RGB) => doc.setFillColor(c[0], c[1], c[2])
+  const setStroke = (c: RGB) => doc.setDrawColor(c[0], c[1], c[2])
+  const setText   = (c: RGB) => doc.setTextColor(c[0], c[1], c[2])
+
+  const setRunFont = (run: Partial<Run>, size: number, serif: boolean) => {
+    const family = run.code ? 'courier' : serif ? 'times' : 'helvetica'
+    const style  = run.bold && run.italic ? 'bolditalic' : run.bold ? 'bold' : run.italic ? 'italic' : 'normal'
+    doc.setFont(family, style)
+    doc.setFontSize(size)
+  }
+
+  const ensureSpace = (h: number) => {
+    if (y + h > BOTTOM) { doc.addPage(); y = TOP_NEXT }
+  }
+
+  // Wrap styled runs into lines of segments that fit maxW.
+  interface Seg { text: string; run: Run }
+  const wrapRuns = (runs: Run[], maxW: number, size: number, serif: boolean): Seg[][] => {
+    const lines: Seg[][] = []
+    let line: Seg[] = []
+    let lineW = 0
+    const pushLine = () => { if (line.length) { lines.push(line); line = []; lineW = 0 } }
+
+    for (const run of runs) {
+      setRunFont(run, size, serif)
+      for (const token of run.text.split(/(\s+)/)) {
+        if (!token) continue
+        const w = doc.getTextWidth(token)
+        if (lineW + w > maxW && lineW > 0) {
+          pushLine()
+          if (/^\s+$/.test(token)) continue // no leading whitespace on new line
+        }
+        const last = line[line.length - 1]
+        if (last && last.run === run) last.text += token
+        else line.push({ text: token, run })
+        lineW += w
+      }
+    }
+    pushLine()
+    return lines.length ? lines : [[]]
+  }
+
+  const drawLine = (segs: Seg[], x: number, baseline: number, size: number, serif: boolean, color: RGB) => {
+    let cx = x
+    for (const seg of segs) {
+      setRunFont(seg.run, size, serif)
+      setText(seg.run.code ? INK : color)
+      doc.text(seg.text, cx, baseline)
+      cx += doc.getTextWidth(seg.text)
+    }
+  }
+
+  // Paragraph that can break across pages line by line.
+  const renderRuns = (
+    text: string, x: number, maxW: number,
+    opts: { size: number; lh: number; serif: boolean; color: RGB; forceItalic?: boolean },
+  ) => {
+    let runs = parseRuns(text)
+    if (opts.forceItalic) runs = runs.map(r => ({ ...r, italic: true }))
+    const lines = wrapRuns(runs, maxW, opts.size, opts.serif)
+    for (const segs of lines) {
+      ensureSpace(opts.lh)
+      y += opts.lh
+      drawLine(segs, x, y, opts.size, opts.serif, opts.color)
+    }
+  }
+
+  // ── First-page header band ─────────────────────────────────────
+  const HEADER_H = 46
+  setFill(BG)
+  doc.rect(0, 0, PAGE_W, HEADER_H, 'F')
+  // decorative circles, blended (no alpha state needed)
+  setFill(mix(BG, WHITE, 0.07))
+  doc.circle(168, -8, 32, 'F')
+  setFill(mix(BG, WHITE, 0.05))
+  doc.circle(34, 52, 24, 'F')
+  // vertical type column
+  setFill(DEEP)
+  doc.rect(PAGE_W - 22, 0, 22, HEADER_H, 'F')
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(7.5)
+  doc.setCharSpace(0.8)
+  setText(mix(DEEP, WHITE, 0.88))
+  doc.text(cfg.label.toUpperCase(), PAGE_W - 10.5, HEADER_H / 2, { angle: 90, align: 'center' })
+  doc.setCharSpace(0)
+  // brand block
+  setFill(mix(BG, WHITE, 0.18))
+  doc.roundedRect(ML, 8, 9.5, 9.5, 2, 2, 'F')
+  setStroke(mix(BG, WHITE, 0.35))
+  doc.setLineWidth(0.5)
+  doc.roundedRect(ML, 8, 9.5, 9.5, 2, 2, 'S')
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(12)
+  setText(WHITE)
+  doc.text('M', ML + 4.75, 14.6, { align: 'center' })
+  doc.setFontSize(10)
+  doc.text('Mwalimu AI', ML + 13, 12.4)
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(6.8)
+  setText(mix(BG, WHITE, 0.65))
+  doc.text('CBC Professional Development Platform', ML + 13, 16.4)
+  // separator
+  setFill(mix(BG, WHITE, 0.28))
+  doc.rect(ML, 22.5, 12, 0.7, 'F')
+  // title (max 2 lines, shrink when long)
+  const titleMaxW = CW - 24
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(16.5)
+  let titleLines: string[] = doc.splitTextToSize(title, titleMaxW)
+  if (titleLines.length > 1) {
+    doc.setFontSize(13)
+    titleLines = doc.splitTextToSize(title, titleMaxW).slice(0, 2)
+  }
+  setText(WHITE)
+  const titleY = titleLines.length > 1 ? 30 : 32.5
+  titleLines.forEach((tl, i) => doc.text(tl, ML, titleY + i * 6))
+  if (subtitle) {
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8.5)
+    setText(mix(BG, WHITE, 0.72))
+    doc.text(doc.splitTextToSize(subtitle, titleMaxW)[0] ?? '', ML, titleLines.length > 1 ? 41 : 38.5)
+  }
+
+  // ── Meta ribbon ────────────────────────────────────────────────
+  const RIB_Y = HEADER_H
+  const RIB_H = 11
+  setFill(LIGHT)
+  doc.rect(0, RIB_Y, PAGE_W, RIB_H, 'F')
+  setFill(MID)
+  doc.rect(0, RIB_Y + RIB_H - 0.6, PAGE_W, 0.6, 'F')
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(6.8)
+  const chipText = 'MWALIMU AI'
+  const chipW = doc.getTextWidth(chipText) + 6
+  setFill(BG)
+  doc.roundedRect(ML, RIB_Y + 3.1, chipW, 4.8, 1.2, 1.2, 'F')
+  setText(WHITE)
+  doc.text(chipText, ML + chipW / 2, RIB_Y + 6.4, { align: 'center' })
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(7.5)
+  setText(INK)
+  const ribbonParts = [date, ...(meta ? [meta] : []), 'CBC-Aligned, Kenya']
+  doc.text(ribbonParts.join('   ·   '), ML + chipW + 4, RIB_Y + 6.6)
+
+  y = RIB_Y + RIB_H + 9
+
+  // ── Content blocks ─────────────────────────────────────────────
+  const blocks = parseBlocks(content)
+
+  for (const block of blocks) {
+    switch (block.kind) {
+
+      case 'h1': {
+        ensureSpace(14)
+        y += 6
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(8.5)
+        doc.setCharSpace(0.5)
+        setText(BG)
+        doc.text(plain(block.text).toUpperCase(), ML, y)
+        doc.setCharSpace(0)
+        y += 2.2
+        setFill(BG)
+        doc.rect(ML, y, CW, 0.7, 'F')
+        y += 5
+        break
+      }
+
+      case 'h2': {
+        ensureSpace(11)
+        y += 4.5
+        setFill(BG)
+        doc.rect(ML, y - 3, 1.1, 4.4, 'F')
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(7.8)
+        doc.setCharSpace(0.3)
+        setText(INK)
+        doc.text(plain(block.text).toUpperCase(), ML + 4, y)
+        doc.setCharSpace(0)
+        y += 3.5
+        break
+      }
+
+      case 'p': {
+        renderRuns(block.text, ML, CW, { size: 10, lh: 5, serif: true, color: BODY })
+        y += 1.6
+        break
+      }
+
+      case 'li': {
+        const markerX = ML + (block.sub ? 7 : 1)
+        const textX   = ML + (block.sub ? 13 : 6.5)
+        const maxW    = CW - (textX - ML)
+        const runs    = parseRuns(block.text)
+        const lines   = wrapRuns(runs, maxW, 10, true)
+        lines.forEach((segs, i) => {
+          ensureSpace(4.9)
+          y += 4.9
+          if (i === 0) {
+            if (block.ordered) {
+              doc.setFont('helvetica', 'bold')
+              doc.setFontSize(8.5)
+              setText(block.sub ? [122, 143, 160] as RGB : BG)
+              doc.text(`${block.index}.`, markerX, y)
+            } else {
+              doc.setFont('times', 'normal')
+              doc.setFontSize(11)
+              setText(block.sub ? [122, 143, 160] as RGB : BG)
+              doc.text(block.sub ? '–' : '•', markerX, y)
+            }
+          }
+          drawLine(segs, textX, y, 10, true, BODY)
+        })
+        y += 0.8
+        break
+      }
+
+      case 'activity': {
+        const hasTime = !!block.time
+        const titleW  = CW - 24 - (hasTime ? 24 : 0)
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(9.8)
+        const tLines: string[] = doc.splitTextToSize(block.title, titleW)
+        const cardH = Math.max(12, 7 + tLines.length * 4.6)
+        ensureSpace(cardH + 5)
+        y += 2.5
+        setFill(LIGHT)
+        setStroke(MID)
+        doc.setLineWidth(0.25)
+        doc.roundedRect(ML, y, CW, cardH, 1.8, 1.8, 'FD')
+        setFill(BG)
+        doc.rect(ML, y, 1.6, cardH, 'F')
+        // number badge
+        doc.circle(ML + 9, y + cardH / 2, 3.6, 'F')
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(8.5)
+        setText(WHITE)
+        doc.text(block.num, ML + 9, y + cardH / 2 + 1.05, { align: 'center' })
+        // title
+        doc.setFontSize(9.8)
+        setText(TITLE_INK)
+        const tStartY = y + cardH / 2 - ((tLines.length - 1) * 4.6) / 2 + 1.2
+        tLines.forEach((tl, i) => doc.text(tl, ML + 15.5, tStartY + i * 4.6))
+        // time chip
+        if (hasTime) {
+          doc.setFontSize(7.5)
+          const timeText = `${block.time} min`
+          const tw = doc.getTextWidth(timeText) + 6
+          setFill(AMBER)
+          doc.roundedRect(ML + CW - tw - 4, y + cardH / 2 - 2.8, tw, 5.6, 1.2, 1.2, 'F')
+          setText(WHITE)
+          doc.text(timeText, ML + CW - 4 - tw / 2, y + cardH / 2 + 1, { align: 'center' })
+        }
+        y += cardH + 3
+        break
+      }
+
+      case 'kv': {
+        const colW = CW / 2
+        const cellPadX = 4
+        const valueW = colW - cellPadX * 2
+        y += 1.5
+        for (let i = 0; i < block.pairs.length; i += 2) {
+          const row = [block.pairs[i], block.pairs[i + 1]].filter(Boolean) as Array<[string, string]>
+          // measure row height from the taller cell
+          const cellLines = row.map(([, v]) => {
+            doc.setFont('times', 'normal')
+            doc.setFontSize(9.5)
+            return doc.splitTextToSize(plain(v) || '-', valueW) as string[]
+          })
+          const rowH = Math.max(...cellLines.map(l => 8.5 + l.length * 4.3))
+          ensureSpace(rowH)
+          row.forEach(([k], col) => {
+            const x = ML + col * colW
+            setStroke(MID)
+            doc.setLineWidth(0.25)
+            doc.rect(x, y, colW, rowH, 'S')
+            doc.setFont('helvetica', 'bold')
+            doc.setFontSize(6.6)
+            doc.setCharSpace(0.2)
+            setText(INK)
+            doc.text(k.toUpperCase(), x + cellPadX, y + 4.6)
+            doc.setCharSpace(0)
+            doc.setFont('times', 'normal')
+            doc.setFontSize(9.5)
+            setText(TITLE_INK)
+            cellLines[col].forEach((vl, li) => doc.text(vl, x + cellPadX, y + 9 + li * 4.3))
+          })
+          y += rowH
+        }
+        y += 3
+        break
+      }
+
+      case 'quote': {
+        doc.setFont('times', 'italic')
+        doc.setFontSize(10)
+        const qLines: string[] = doc.splitTextToSize(plain(block.text), CW - 14)
+        const qH = qLines.length * 5 + 6
+        ensureSpace(Math.min(qH + 4, BOTTOM - TOP_NEXT))
+        y += 2
+        setFill(LIGHT)
+        doc.roundedRect(ML, y, CW, qH, 1.5, 1.5, 'F')
+        setFill(BG)
+        doc.rect(ML, y, 1.2, qH, 'F')
+        setText([68, 85, 102])
+        qLines.forEach((ql, i) => doc.text(ql, ML + 7, y + 6.2 + i * 5))
+        y += qH + 3
+        break
+      }
+
+      case 'hr': {
+        ensureSpace(7)
+        y += 3.5
+        setFill(MID)
+        doc.rect(ML, y, CW, 0.3, 'F')
+        y += 3.5
+        break
+      }
+    }
+  }
+
+  // ── Footer band + page numbers on every page ───────────────────
+  const totalPages = doc.getNumberOfPages()
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i)
+    setFill(DEEP)
+    doc.rect(0, PAGE_H - FOOT_H, PAGE_W, FOOT_H, 'F')
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(8)
+    setText(WHITE)
+    doc.text('Mwalimu AI', ML, PAGE_H - FOOT_H / 2 + 1.2)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(6.4)
+    setText(mix(DEEP, WHITE, 0.8))
+    doc.text('KICD / TSC / KEMI Aligned Professional Development  ·  mwalimuai.co.ke', PAGE_W / 2, PAGE_H - FOOT_H / 2 + 1.2, { align: 'center' })
+    setText(mix(DEEP, WHITE, 0.7))
+    doc.text(`Page ${i} of ${totalPages}`, PAGE_W - MR, PAGE_H - FOOT_H / 2 + 1.2, { align: 'right' })
+  }
+
+  // ── Download ───────────────────────────────────────────────────
+  const filename = title
+    .replace(/[^a-z0-9 \-]/gi, '')
+    .replace(/\s+/g, '_')
+    .slice(0, 80)
+  doc.save(`${filename || 'Mwalimu_AI'}.pdf`)
 }

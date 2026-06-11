@@ -352,7 +352,7 @@ export default function JournalPage() {
       {/* Privacy note */}
       <div className="flex items-center gap-2 text-xs text-muted-foreground px-1">
         <Lock className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-        <span>Your journal is saved to your account and synced across your devices. Only you can see it.</span>
+        <span>Your journal is private and synced to your account. No one else can see it.</span>
       </div>
 
       {/* Loading state */}
