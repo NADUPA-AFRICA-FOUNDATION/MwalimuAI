@@ -76,6 +76,8 @@ type Block =
   | { kind: 'li'; text: string; ordered: boolean; index: number; sub: boolean }
   | { kind: 'activity'; num: string; title: string; time?: string }
   | { kind: 'kv'; pairs: Array<[string, string]> }
+  | { kind: 'table'; rows: string[][] }
+  | { kind: 'code'; lines: string[] }
 
 const ACT_RE = /^Activity\s+(\d+)\s*[–\-]\s*(.+?)(?:\s*\((\d+)\s*min(?:utes?)?\))?$/i
 
@@ -83,6 +85,14 @@ function parseBlocks(md: string): Block[] {
   const blocks: Block[] = []
   const listStack: Array<{ type: 'ul' | 'ol'; indent: number; count: number }> = []
   let kvBuffer: string[] = []
+  let inFence = false
+  let fenceLines: string[] = []
+  let tableRows: string[][] | null = null
+
+  const flushTable = () => {
+    if (tableRows && tableRows.length > 0) blocks.push({ kind: 'table', rows: tableRows })
+    tableRows = null
+  }
 
   const closeAllLists = () => { listStack.length = 0 }
 
@@ -103,6 +113,32 @@ function parseBlocks(md: string): Block[] {
   for (const raw of md.split('\n')) {
     const line    = raw.trimEnd()
     const trimmed = line.trim()
+
+    // Code fences: ``` toggles; inner lines are captured verbatim
+    if (trimmed.startsWith('```')) {
+      if (inFence) {
+        blocks.push({ kind: 'code', lines: fenceLines })
+        fenceLines = []
+        inFence = false
+      } else {
+        closeAllLists(); flushKV(); flushTable()
+        inFence = true
+      }
+      continue
+    }
+    if (inFence) { fenceLines.push(line); continue }
+
+    // Tables: consecutive |...| lines; |---| separator rows are dropped
+    if (trimmed.startsWith('|')) {
+      closeAllLists(); flushKV()
+      if (!/^\|[\s:|-]+\|?$/.test(trimmed)) {
+        const cells = trimmed.replace(/^\||\|$/g, '').split('|').map(c => c.trim())
+        if (!tableRows) tableRows = []
+        tableRows.push(cells)
+      }
+      continue
+    }
+    if (tableRows) flushTable()
 
     if (trimmed.startsWith('### ')) {
       closeAllLists(); flushKV()
@@ -165,6 +201,13 @@ function parseBlocks(md: string): Block[] {
       continue
     }
 
+    // A standalone bold line is a section heading in disguise (common in AI output)
+    if (/^\*\*[^*]+\*\*:?$/.test(trimmed)) {
+      closeAllLists(); flushKV()
+      blocks.push({ kind: 'h2', text: trimmed.replace(/^\*\*|\*\*:?$/g, '') })
+      continue
+    }
+
     if (listStack.length === 0) {
       const kvM = trimmed.match(/^([A-Z][A-Za-z &/]{1,24})\s*:\s*(.{0,55})$/)
       if (kvM) { kvBuffer.push(trimmed); continue }
@@ -174,8 +217,10 @@ function parseBlocks(md: string): Block[] {
     blocks.push({ kind: 'p', text: trimmed })
   }
 
+  if (inFence && fenceLines.length > 0) blocks.push({ kind: 'code', lines: fenceLines })
   closeAllLists()
   flushKV()
+  flushTable()
   return blocks
 }
 
@@ -299,6 +344,9 @@ export async function printPDF({ title, subtitle, meta, content, type = 'default
   doc.circle(168, -8, 32, 'F')
   setFill(mix(BG, WHITE, 0.05))
   doc.circle(34, 52, 24, 'F')
+  // re-clip: repaint everything below the band white so circles cannot bleed into content
+  setFill(WHITE)
+  doc.rect(0, HEADER_H, PAGE_W, PAGE_H - HEADER_H, 'F')
   // vertical type column
   setFill(DEEP)
   doc.rect(PAGE_W - 22, 0, 22, HEADER_H, 'F')
@@ -306,7 +354,11 @@ export async function printPDF({ title, subtitle, meta, content, type = 'default
   doc.setFontSize(7.5)
   doc.setCharSpace(0.8)
   setText(mix(DEEP, WHITE, 0.88))
-  doc.text(cfg.label.toUpperCase(), PAGE_W - 10.5, HEADER_H / 2, { angle: 90, align: 'center' })
+  // angle-90 text runs upward from its anchor; anchor at band centre + half the
+  // text width keeps the label vertically centred inside the band
+  const labelText = cfg.label.toUpperCase()
+  const labelW = doc.getTextWidth(labelText)
+  doc.text(labelText, PAGE_W - 10.5, Math.min(HEADER_H - 4, HEADER_H / 2 + labelW / 2), { angle: 90 })
   doc.setCharSpace(0)
   // brand block
   setFill(mix(BG, WHITE, 0.18))
@@ -514,6 +566,86 @@ export async function printPDF({ title, subtitle, meta, content, type = 'default
           y += rowH
         }
         y += 3
+        break
+      }
+
+      case 'table': {
+        const rows = block.rows
+        if (rows.length === 0) break
+        const n     = Math.max(...rows.map(r => r.length))
+        const colW  = CW / n
+        const padX  = 2.5
+        const lineH = 3.9
+
+        const measureCells = (cells: string[], bold: boolean, size: number): string[][] => {
+          doc.setFont('helvetica', bold ? 'bold' : 'normal')
+          doc.setFontSize(size)
+          return Array.from({ length: n }, (_, c) => doc.splitTextToSize(plain(cells[c] ?? ''), colW - padX * 2) as string[])
+        }
+        const rowHeight = (cellTexts: string[][]) =>
+          Math.max(1, ...cellTexts.map(l => l.length)) * lineH + 3.2
+
+        y += 1.5
+        const headLines = measureCells(rows[0], true, 8)
+        const headH     = rowHeight(headLines)
+        ensureSpace(headH + 9)
+
+        setFill(BG)
+        doc.rect(ML, y, CW, headH, 'F')
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(8)
+        setText(WHITE)
+        headLines.forEach((cell, c) =>
+          cell.forEach((tl, li) => doc.text(tl, ML + c * colW + padX, y + 4.5 + li * lineH)))
+        y += headH
+
+        rows.slice(1).forEach((row, r) => {
+          const bodyLines = measureCells(row, false, 8.5)
+          const bodyH     = rowHeight(bodyLines)
+          ensureSpace(bodyH)
+          if (r % 2 === 1) {
+            setFill([246, 248, 250])
+            doc.rect(ML, y, CW, bodyH, 'F')
+          }
+          doc.setFont('helvetica', 'normal')
+          doc.setFontSize(8.5)
+          setText(BODY)
+          bodyLines.forEach((cell, c) =>
+            cell.forEach((tl, li) => doc.text(tl, ML + c * colW + padX, y + 4.5 + li * lineH)))
+          setStroke(MID)
+          doc.setLineWidth(0.2)
+          doc.line(ML, y + bodyH, ML + CW, y + bodyH)
+          y += bodyH
+        })
+        y += 3
+        break
+      }
+
+      case 'code': {
+        const lineH = 3.8
+        doc.setFont('courier', 'normal')
+        doc.setFontSize(8)
+        const wrapped = block.lines.flatMap(l =>
+          l.trim() === '' ? [''] : (doc.splitTextToSize(l, CW - 12) as string[]))
+        let idx = 0
+        while (idx < wrapped.length) {
+          // fit what we can on this page, then continue on the next
+          const room  = Math.max(1, Math.floor((BOTTOM - y - 6) / lineH))
+          const chunk = wrapped.slice(idx, idx + room)
+          const h     = chunk.length * lineH + 5
+          ensureSpace(h)
+          setFill([246, 248, 250])
+          doc.rect(ML, y, CW, h, 'F')
+          setFill(BG)
+          doc.rect(ML, y, 1.2, h, 'F')
+          doc.setFont('courier', 'normal')
+          doc.setFontSize(8)
+          setText(INK)
+          chunk.forEach((tl, li) => doc.text(tl, ML + 5, y + 4.6 + li * lineH))
+          y += h + 1
+          idx += chunk.length
+        }
+        y += 2
         break
       }
 
