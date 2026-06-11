@@ -20,6 +20,7 @@ export interface ProgramProgress {
   postAssessment?: { score: number; total: number; date: string; answers: number[] }
   assignment?: { text: string; feedback: string; submittedAt: string }
   certificateEarnedAt?: string
+  certificateSerial?: string           // MW-XXXXX-XXXXX, verifiable at /verify
   cohortJoined?: boolean
 }
 
@@ -56,6 +57,7 @@ function cloudSync(programId: string, p: ProgramProgress) {
     post_assessment:       p.postAssessment ?? null,
     assignment:            p.assignment     ?? null,
     certificate_earned_at: p.certificateEarnedAt ?? null,
+    certificate_serial:    p.certificateSerial   ?? null,
     cohort_joined:         p.cohortJoined   ?? false,
     updated_at:            new Date().toISOString(),
   }, { onConflict: 'user_id,program_id' }))
@@ -82,6 +84,7 @@ export async function loadProgressFromCloud(userId: string): Promise<void> {
         postAssessment:      row.post_assessment       ?? undefined,
         assignment:          row.assignment            ?? undefined,
         certificateEarnedAt: row.certificate_earned_at ?? undefined,
+        certificateSerial:   row.certificate_serial    ?? undefined,
         cohortJoined:        row.cohort_joined         ?? false,
       }
     }
@@ -147,15 +150,48 @@ export function saveAssignment(programId: string, text: string, feedback: string
   cloudSync(programId, p)
 }
 
-export function earnCertificate(programId: string) {
+// Unambiguous charset (no 0/O/1/I/L) for human-readable serials
+function genSerial(): string {
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
+  const block = (n: number) => {
+    const bytes = new Uint8Array(n)
+    if (typeof crypto !== 'undefined' && 'getRandomValues' in crypto) crypto.getRandomValues(bytes)
+    else for (let i = 0; i < n; i++) bytes[i] = Math.floor(Math.random() * 256)
+    return Array.from(bytes).map(b => chars[b % chars.length]).join('')
+  }
+  return `MW-${block(5)}-${block(5)}`
+}
+
+/**
+ * Marks the certificate as earned, assigning a verifiable serial number on
+ * first call (also backfills serials for certificates earned before serials
+ * existed). Registers the serial in the public `certificates` table so it
+ * can be verified at /verify. Returns the serial.
+ */
+export function earnCertificate(programId: string, teacherName = '', programTitle = ''): string {
   const all = read()
   const p   = all[programId] ?? { completedLessons: [], reflections: {} }
   if (!p.certificateEarnedAt) {
     p.certificateEarnedAt = new Date().toLocaleDateString()
   }
+  if (!p.certificateSerial) {
+    p.certificateSerial = genSerial()
+    // Register in the public verification registry
+    if (_userId) {
+      const supabase = createClient()
+      trackWrite(supabase.from('certificates').insert({
+        serial:        p.certificateSerial,
+        user_id:       _userId,
+        program_id:    programId,
+        program_title: programTitle,
+        teacher_name:  teacherName,
+      }))
+    }
+  }
   all[programId] = p
   write(all)
   cloudSync(programId, p)
+  return p.certificateSerial
 }
 
 export function joinCohort(programId: string) {
