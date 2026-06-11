@@ -102,6 +102,7 @@ export default function ModuleDetailPage() {
   const completedCount = completedLessons.length
   const totalLessons = module.lessons.length
   const progressPercent = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0
+  const nextLessonId = module.lessons.find(l => !completedLessons.includes(l.id))?.id ?? module.lessons[0]?.id ?? 1
 
   const toggleLessonComplete = (lessonId: number) => {
     const isNowComplete = !completedLessons.includes(lessonId)
@@ -174,7 +175,7 @@ export default function ModuleDetailPage() {
             )}
             {completedCount > 0 && completedCount < totalLessons && (
               <Button className="w-full" asChild>
-                <Link href={`/dashboard/modules/${module.id}/lesson/${completedCount + 1}`}>
+                <Link href={`/dashboard/modules/${module.id}/lesson/${nextLessonId}`}>
                   Continue Learning
                 </Link>
               </Button>

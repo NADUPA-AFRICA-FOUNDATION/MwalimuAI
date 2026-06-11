@@ -3,7 +3,7 @@
 import {
   createContext, useContext, useState, useEffect, useCallback, type ReactNode,
 } from 'react'
-import { type User } from '@supabase/supabase-js'
+import { type User, type Session } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
 import { syncActivityFromSupabase, syncToolsUsedFromSupabase, syncCommunityPostsFromSupabase } from '@/lib/streak'
 import { setLearningProgressUser, loadProgressFromCloud } from '@/lib/learning-progress'
@@ -157,8 +157,11 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       }
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+    // The handler must NOT run inside the onAuthStateChange callback itself:
+    // supabase-js holds its auth lock while dispatching the event, so awaiting
+    // other Supabase calls there deadlocks token refresh — the session cookie
+    // then expires and the next server-validated navigation logs the user out.
+    const handleSession = async (session: Session | null) => {
         const nextUser = session?.user ?? null
         setUser(nextUser)
 
@@ -258,6 +261,13 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         // partial state where authLoading=false but mounted=false.
         setAuthLoading(false)
         setMounted(true)
+    }
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        // Defer all work out of the callback so the auth lock is released
+        // immediately (see comment on handleSession above).
+        setTimeout(() => { void handleSession(session) }, 0)
       }
     )
 
