@@ -1,4 +1,4 @@
-import { AI_MODULES, type ToolSection as AiModuleSection } from './ai-toolkit-data'
+import { AI_MODULES, type ToolSection as AiModuleSection, type AiModule } from './ai-toolkit-data'
 
 export type Track = 'core' | 'stem' | 'languages' | 'humanities' | 'leadership' | 'wellbeing'
 
@@ -1439,14 +1439,14 @@ const AI_LESSON_META: { keyPoints: string[]; reflectionPrompt: string; reflectio
     reflectionPlaceholder: 'Community challenge: ...\nThree Learning Areas it connects: ...\nThe tangible output learners would make: ...\nThe real audience: ...',
   },
   {
-    keyPoints: ['KNEC\'s portal is the system of record; Classroom is your working layer', 'A private management class organises the SBA workflow by term', 'Export the Gradebook to Sheets for KNEC upload preparation'],
-    reflectionPrompt: 'How do you currently track SBAs, and where does it break down at report time? Describe the private management Classroom you would set up to make your records audit-ready.',
-    reflectionPlaceholder: 'My current SBA tracking: ...\nWhere it breaks down: ...\nMy management-Classroom structure (Topics, what I post): ...',
+    keyPoints: ['Assess the thinking journey, not just the final product', 'A learner who failed, adjusted, and improved shows higher Critical Thinking than a lucky first try', 'Gemini writes a 5-dimension process rubric in minutes'],
+    reflectionPrompt: 'Take a practical task you assess. Rewrite one rubric criterion so it rewards how a learner handled failure (testing, adjusting) rather than only whether the final product worked. What changes about who scores well?',
+    reflectionPlaceholder: 'The task and criterion: ...\nOld (product-focused) wording: ...\nNew (process-focused) wording: ...\nWho now scores well that did not before: ...',
   },
   {
-    keyPoints: ['Differentiation is a CBC requirement, not a luxury', 'Gemini generates support / standard / extension versions at once', 'Show learners the full rubric to build Self-Efficacy'],
-    reflectionPrompt: 'In CBC the goal is growth, not ranking. Why does showing learners the EE descriptor (not hiding it) build their competency, and how would you introduce a three-level task without implying some learners are "lower"?',
-    reflectionPlaceholder: 'Why visible EE descriptors help: ...\nHow I would frame three levels respectfully: ...',
+    keyPoints: ['The cba.knec.ac.ke portal is the record of truth; Classroom is your workspace', 'A private SBA-records class organises tools, rubrics, and scores by term', 'Gemini generates support / standard / extension SBA tasks for a mixed-ability class'],
+    reflectionPrompt: 'How do you currently track SBAs, and where does it break down at report time? Describe the private SBA-records Classroom (Topics, what you post) you would set up to make an SQA inspection take 20 minutes.',
+    reflectionPlaceholder: 'My current SBA tracking: ...\nWhere it breaks down: ...\nMy SBA-records Classroom structure: ...',
   },
   // M4
   {
@@ -1482,22 +1482,61 @@ const AI_LESSON_META: { keyPoints: string[]; reflectionPrompt: string; reflectio
   },
 ]
 
-function aiReadingFor(section: AiModuleSection): string {
-  // Convert the bullet character used in the source to markdown list items so
-  // the reading renderer styles them, then append the tip and the prompt.
-  const body = section.content.replace(/\n•\s/g, '\n- ').replace(/^•\s/, '- ')
-  return [
-    body,
-    '',
-    `>> THINK: ${section.tip}`,
-    '',
-    `### Prompt template: ${section.promptTitle}`,
-    `Open ${section.tool}, paste the prompt below, and replace every [bracketed] field with your own classroom details before running it. Always review the output before using it with learners.`,
+// Assemble one lesson's reading from a course section: the module-opening
+// Kenyan story (first lesson only), the section's scenario as a callout, the
+// explanation, an optional comparison table and feedback comment bank, the
+// pedagogical tip, the copyable prompt, and the module's low-resource
+// framework (last lesson only).
+function aiReadingFor(s: AiModuleSection, mod: AiModule, isFirst: boolean, isLast: boolean): string {
+  const parts: string[] = []
+
+  if (isFirst) parts.push('## In a Kenyan classroom', '', mod.context, '')
+
+  parts.push(`>> CASE: ${s.scenario}`, '', s.content, '')
+
+  if (s.comparison) {
+    parts.push(
+      '### The shift in one example',
+      '',
+      '| 8-4-4 rote question | CBC performance task |',
+      '| --- | --- |',
+      `| ${s.comparison.traditional} | ${s.comparison.performance} |`,
+      '',
+      `**Competency developed:** ${s.comparison.competency}`,
+      '',
+    )
+  }
+
+  parts.push(`>> THINK: ${s.tip}`, '')
+
+  if (s.commentBank) {
+    parts.push(
+      '### Ready-to-paste feedback templates',
+      'Save these in your Google Classroom Comment Bank, then add one personalised line on top for each learner.',
+      '',
+    )
+    for (const c of s.commentBank) {
+      parts.push(`**${c.code}**`, '', '```', c.text, '```', '')
+    }
+  }
+
+  parts.push(
+    `### Prompt template: ${s.promptTitle}`,
+    `Open ${s.tool}, paste the prompt below, and replace every [bracketed] field with your own classroom details before running it. Always review the output before using it with learners.`,
     '',
     '```',
-    section.prompt,
+    s.prompt,
     '```',
-  ].join('\n')
+  )
+
+  if (isLast && mod.lowResource) {
+    parts.push('', `## ${mod.lowResource.title}`, '')
+    for (const sc of mod.lowResource.scenarios) {
+      parts.push(`### ${sc.label}`, ...sc.steps.map((st, i) => `${i + 1}. ${st}`), '')
+    }
+  }
+
+  return parts.join('\n')
 }
 
 const aiEmpoweredEducator: Program = {
@@ -1515,17 +1554,17 @@ const aiEmpoweredEducator: Program = {
   modules: AI_MODULES.map((m, mi) => ({
     id: `m${mi + 1}`,
     title: m.title,
-    description: m.subtitle,
+    description: m.tagline,
     lessons: m.sections.map((s, si) => {
       const meta = AI_LESSON_META[AI_MODULES.slice(0, mi).reduce((a, x) => a + x.sections.length, 0) + si]
-      const cleanTitle = s.title.replace(/^[^:]+:\s*/, '') // drop "STEM:" style prefixes
+      const pathwayLabel = s.pathway ? s.pathway.replace(/\s*Pathway$/, '') : ''
       return {
         id: `l${si + 1}`,
-        title: s.pathway ? `${s.pathway}: ${cleanTitle}` : s.title,
+        title: pathwayLabel ? `${pathwayLabel}: ${s.title}` : s.title,
         duration: '30 min',
-        videoTitle: `${s.tool}: ${cleanTitle}`,
+        videoTitle: `${s.tool}: ${s.title}`,
         videoPoints: meta.keyPoints,
-        reading: aiReadingFor(s),
+        reading: aiReadingFor(s, m, si === 0, si === m.sections.length - 1),
         reflectionPrompt: meta.reflectionPrompt,
         reflectionPlaceholder: meta.reflectionPlaceholder,
       }
