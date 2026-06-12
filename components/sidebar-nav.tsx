@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation'
 import {
   BookOpen, Users, Trophy, FileText, Home, Settings,
   Download, Sparkles, Wand2, TrendingUp, BookMarked, PenLine,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, Bot,
 } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
@@ -35,6 +35,7 @@ const NAV_GROUPS = [
     items: [
       { href: '/dashboard/ai-coach',     labelKey: 'nav.aiCoach'      as TranslationKey, icon: Sparkles   },
       { href: '/dashboard/tools',        labelKey: 'nav.tools'        as TranslationKey, icon: Wand2      },
+      { href: '/dashboard/ai-toolkit',   labelKey: 'nav.aiToolkit'    as TranslationKey, icon: Bot        },
       { href: '/dashboard/journal',      labelKey: 'nav.journal'      as TranslationKey, icon: PenLine    },
     ],
   },
