@@ -25,9 +25,11 @@ export default function CertificatePage() {
   useEffect(() => {
     if (!program) return
     const p = getProgress(program.id)
-    // Assign the earned date and a verifiable serial on first unlock; also
-    // backfills serials for certificates earned before serials existed.
-    if (p.postAssessment && (!p.certificateEarnedAt || !p.certificateSerial)) {
+    // Assign the earned date and a verifiable serial on first unlock, and
+    // (re)register the public verification row so it always carries the
+    // teacher name and program title — backfilling rows first created on the
+    // assessment screen without them. earnCertificate is idempotent.
+    if (p.postAssessment) {
       earnCertificate(program.id, profile?.name ?? 'Teacher', program.title)
     }
     setProgress(getProgress(program.id) as typeof progress)

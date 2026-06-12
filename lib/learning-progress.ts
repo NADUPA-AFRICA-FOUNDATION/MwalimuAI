@@ -162,11 +162,27 @@ function genSerial(): string {
   return `MW-${block(5)}-${block(5)}`
 }
 
+// Upsert the public verification registry row for a certificate. Keyed by the
+// serial (the table's primary key), so it both creates the row and backfills
+// teacher_name/program_title onto an existing row. Name/title are only written
+// when non-empty, so a later call with real values fixes a row first created
+// without them (e.g. when the cert was earned on the assessment screen), and a
+// call without them never blanks good data.
+function registerCertificate(serial: string, programId: string, teacherName: string, programTitle: string) {
+  if (!_userId) return
+  const row: Record<string, unknown> = { serial, user_id: _userId, program_id: programId }
+  if (programTitle) row.program_title = programTitle
+  if (teacherName)  row.teacher_name  = teacherName
+  const supabase = createClient()
+  trackWrite(supabase.from('certificates').upsert(row, { onConflict: 'serial' }))
+}
+
 /**
  * Marks the certificate as earned, assigning a verifiable serial number on
  * first call (also backfills serials for certificates earned before serials
- * existed). Registers the serial in the public `certificates` table so it
- * can be verified at /verify. Returns the serial.
+ * existed). Idempotent: every call (re)registers the serial in the public
+ * `certificates` table, backfilling teacher_name/program_title when provided.
+ * Returns the serial.
  */
 export function earnCertificate(programId: string, teacherName = '', programTitle = ''): string {
   const all = read()
@@ -176,18 +192,10 @@ export function earnCertificate(programId: string, teacherName = '', programTitl
   }
   if (!p.certificateSerial) {
     p.certificateSerial = genSerial()
-    // Register in the public verification registry
-    if (_userId) {
-      const supabase = createClient()
-      trackWrite(supabase.from('certificates').insert({
-        serial:        p.certificateSerial,
-        user_id:       _userId,
-        program_id:    programId,
-        program_title: programTitle,
-        teacher_name:  teacherName,
-      }))
-    }
   }
+  // Always (re)register so the registry row carries the teacher name and
+  // program title once they are known, even if the serial already existed.
+  registerCertificate(p.certificateSerial, programId, teacherName, programTitle)
   all[programId] = p
   write(all)
   cloudSync(programId, p)

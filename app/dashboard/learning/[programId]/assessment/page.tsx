@@ -15,7 +15,7 @@ export default function AssessmentPage() {
   const params = useParams<{ programId: string }>()
   const searchParams = useSearchParams()
   const router = useRouter()
-  const { syncReady } = useProfile()
+  const { syncReady, profile } = useProfile()
   const type = (searchParams.get('type') ?? 'pre') as 'pre' | 'post'
 
   const program = getProgramById(params.programId)
@@ -46,7 +46,7 @@ export default function AssessmentPage() {
       const p = getProgress(program.id)
       const prog = { ...p, postAssessment: { score: s, total: questions.length, date: new Date().toLocaleDateString(), answers: answers as number[] } }
       if (isProgramComplete(program, prog)) {
-        earnCertificate(program.id)
+        earnCertificate(program.id, profile?.name ?? 'Teacher', program.title)
       }
     }
   }
