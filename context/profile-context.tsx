@@ -6,7 +6,7 @@ import {
 import { type User, type Session } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
 import { syncActivityFromSupabase, syncToolsUsedFromSupabase, syncCommunityPostsFromSupabase } from '@/lib/streak'
-import { setLearningProgressUser, loadProgressFromCloud } from '@/lib/learning-progress'
+import { setLearningProgressUser, loadProgressFromCloud, syncCertificatesToRegistry } from '@/lib/learning-progress'
 import { setA11yUser, applyA11y, type A11ySettings } from '@/lib/a11y-settings'
 import { setAccessibilityUser } from '@/lib/accessibility'
 import { trackWrite, flushWrites } from '@/lib/write-queue'
@@ -308,7 +308,16 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
             syncToolsUsedFromSupabase(nextUser.id),
             loadProgressFromCloud(nextUser.id),
             syncCommunityPostsFromSupabase(nextUser.id),
-          ]).then(() => setSyncReady(true))
+          ]).then(() => {
+            // Backfill the certificate registry once cloud progress is loaded,
+            // so any certificate whose registration was lost verifies at /verify.
+            try {
+              const local = localStorage.getItem(PROFILE_KEY)
+              const name = local ? (JSON.parse(local) as TeacherProfile).name : ''
+              syncCertificatesToRegistry(name || 'Teacher')
+            } catch {}
+            setSyncReady(true)
+          })
         } else {
           // Session gone (sign-out or expiry) — null out all module user IDs
           // so subsequent writes don't attempt authenticated Supabase calls

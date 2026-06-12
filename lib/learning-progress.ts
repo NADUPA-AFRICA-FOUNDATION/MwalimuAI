@@ -1,4 +1,5 @@
 import type { Program } from './learning-paths-data'
+import { PROGRAMS } from './learning-paths-data'
 import { createClient } from '@/lib/supabase/client'
 import { trackWrite } from '@/lib/write-queue'
 
@@ -200,6 +201,22 @@ export function earnCertificate(programId: string, teacherName = '', programTitl
   write(all)
   cloudSync(programId, p)
   return p.certificateSerial
+}
+
+/**
+ * Re-register every certificate this user holds into the public verification
+ * registry. Idempotent (upsert by serial). Repairs certificates earned before
+ * the registry existed, or whose original registration write was lost, so they
+ * verify at /verify. Called on sign-in after cloud progress has loaded.
+ */
+export function syncCertificatesToRegistry(teacherName: string) {
+  if (!_userId) return
+  const all = read()
+  for (const [programId, p] of Object.entries(all)) {
+    if (!p.certificateSerial) continue
+    const title = PROGRAMS.find(pr => pr.id === programId)?.title ?? ''
+    registerCertificate(p.certificateSerial, programId, teacherName, title)
+  }
 }
 
 export function joinCohort(programId: string) {
