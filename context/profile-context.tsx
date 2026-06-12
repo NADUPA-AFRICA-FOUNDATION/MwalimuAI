@@ -10,6 +10,7 @@ import { setLearningProgressUser, loadProgressFromCloud } from '@/lib/learning-p
 import { setA11yUser, applyA11y, type A11ySettings } from '@/lib/a11y-settings'
 import { setAccessibilityUser } from '@/lib/accessibility'
 import { trackWrite, flushWrites } from '@/lib/write-queue'
+import { decideDeviceAction } from '@/lib/device-claim'
 import { type Lang } from '@/lib/i18n'
 
 export interface TeacherProfile {
@@ -64,6 +65,7 @@ function getDeviceId(): string {
     return 'unknown-device'
   }
 }
+
 
 // All keys that belong to a specific user — cleared when a DIFFERENT user signs in.
 const ALL_USER_KEYS = [
@@ -164,10 +166,38 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   // Stable client — one instance per provider lifecycle so all writes share
   // the same auth session and onAuthStateChange fires exactly once.
   const [supabase] = useState(() => createClient())
-  // True while a fresh sign-in is claiming this device; the single-device
-  // watchdog must not run during the claim or it would race and log out
-  // the device that just signed in.
+  // Single-device claim state.
+  // deviceClaimPending: true while a claim write is in flight (watchdog pauses).
+  // claimedDeviceId: the device id we wrote as the active session — the watchdog
+  //   compares against THIS, not getDeviceId(), so localStorage eviction can't
+  //   cause a false logout.
+  // claimedForUser: the user id we last claimed for, so the claim runs once per
+  //   login instead of on every spurious SIGNED_IN re-fire (supabase-js v2 emits
+  //   SIGNED_IN on tab focus and token refresh, not only on real logins).
   const deviceClaimPending = useRef(false)
+  const claimedDeviceId    = useRef<string | null>(null)
+  const claimedForUser     = useRef<string | null>(null)
+
+  const claimDevice = useCallback(async (userId: string) => {
+    if (claimedForUser.current === userId) return // already claimed this login
+    claimedForUser.current = userId
+    const deviceId = getDeviceId()
+    claimedDeviceId.current = deviceId
+    deviceClaimPending.current = true
+    try {
+      await supabase.from('profiles').upsert({
+        id: userId,
+        active_session_id: deviceId,
+        updated_at: new Date().toISOString(),
+      })
+      // Revoke other devices' refresh tokens (server-side backstop). Once per
+      // login, never on focus/refresh re-fires.
+      await supabase.auth.signOut({ scope: 'others' })
+    } catch (err) {
+      console.error('[mwalimu] device claim failed:', err)
+    }
+    deviceClaimPending.current = false
+  }, [supabase])
 
   useEffect(() => {
     // Get initial session
@@ -188,23 +218,15 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         setUser(nextUser)
 
         if (nextUser) {
-          // ── Single-device enforcement: claim this device on fresh sign-in.
-          // Writing our device id supersedes every other device (their
-          // watchdog signs them out), and signOut({scope:'others'}) revokes
-          // their refresh tokens server-side as a backstop.
-          if (event === 'SIGNED_IN' && typeof window !== 'undefined') {
-            deviceClaimPending.current = true
-            try {
-              await supabase.from('profiles').upsert({
-                id: nextUser.id,
-                active_session_id: getDeviceId(),
-                updated_at: new Date().toISOString(),
-              })
-              await supabase.auth.signOut({ scope: 'others' })
-            } catch (err) {
-              console.error('[mwalimu] device claim failed:', err)
-            }
-            deviceClaimPending.current = false
+          // ── Single-device enforcement: claim the account for this device
+          // once per login. Claiming on a restored session (INITIAL_SESSION)
+          // too means a returning sole device always re-asserts ownership and
+          // never locks itself out; only a device that is superseded while
+          // actively open is signed out (by the watchdog below). claimDevice
+          // is deduped, so spurious SIGNED_IN re-fires (focus/token refresh)
+          // do not re-run signOut({scope:'others'}).
+          if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && typeof window !== 'undefined') {
+            await claimDevice(nextUser.id)
           }
 
           // Reset syncReady so the dashboard waits for fresh cloud data
@@ -296,6 +318,9 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
           setAccessibilityUser(null)
           setProfileState(null)
           setSyncReady(false)
+          // Allow the next login (any user) to claim cleanly.
+          claimedForUser.current  = null
+          claimedDeviceId.current = null
         }
 
         // Always resolve auth and mount together — never leave the app in a
@@ -324,28 +349,44 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     if (!user || typeof window === 'undefined') return
     let cancelled = false
 
+    const readRemote = async (): Promise<{ ok: boolean; remote: string | null }> => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('active_session_id')
+        .eq('id', user.id)
+        .maybeSingle()
+      if (error || !data) return { ok: false, remote: null } // column missing pre-migration → no enforcement
+      return { ok: true, remote: (data.active_session_id as string | null) }
+    }
+
     const check = async () => {
       if (cancelled || deviceClaimPending.current) return
       try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('active_session_id')
-          .eq('id', user.id)
-          .maybeSingle()
-        if (cancelled || error || !data) return // column missing pre-migration → no enforcement
+        const first = await readRemote()
+        if (cancelled || !first.ok) return
 
-        const remote = data.active_session_id as string | null
-        const local  = getDeviceId()
-        if (!remote) {
-          // Legacy session with no claim yet: claim quietly for this device
-          await supabase.from('profiles').update({ active_session_id: local }).eq('id', user.id)
-        } else if (remote !== local) {
-          try { sessionStorage.setItem(FORCED_LOGOUT_FLAG, '1') } catch {}
-          await flushWrites()
-          await supabase.auth.signOut({ scope: 'local' })
-          // onAuthStateChange's signed-out branch + the dashboard auth guard
-          // handle cleanup and the redirect to /auth/login.
+        const claimed = claimedDeviceId.current ?? getDeviceId()
+        const action  = decideDeviceAction(first.remote, claimed)
+
+        if (action === 'reclaim') {
+          await claimDevice(user.id)
+          return
         }
+        if (action !== 'logout') return
+
+        // Confirm with a second read after a short delay before signing out,
+        // so a transient read during another tab's claim cannot bounce us.
+        await new Promise(r => setTimeout(r, 1500))
+        if (cancelled || deviceClaimPending.current) return
+        const second = await readRemote()
+        if (cancelled || !second.ok) return
+        if (decideDeviceAction(second.remote, claimedDeviceId.current ?? getDeviceId()) !== 'logout') return
+
+        try { sessionStorage.setItem(FORCED_LOGOUT_FLAG, '1') } catch {}
+        await flushWrites()
+        await supabase.auth.signOut({ scope: 'local' })
+        // onAuthStateChange's signed-out branch + the dashboard auth guard
+        // handle cleanup and the redirect to /auth/login.
       } catch {}
     }
 
@@ -360,7 +401,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       window.removeEventListener('focus', onFocus)
       document.removeEventListener('visibilitychange', onFocus)
     }
-  }, [user, supabase])
+  }, [user, supabase, claimDevice])
 
   const setProfile = useCallback(async (p: TeacherProfile) => {
     setProfileState(p)
