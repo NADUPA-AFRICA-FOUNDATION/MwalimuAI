@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { BookOpen, MessageSquare, Users, Mail, ChevronRight, Wand2, ClipboardCheck, FileText, FlaskConical, Bot, Sparkles } from 'lucide-react'
+import { BookOpen, MessageSquare, Users, Mail, ChevronRight, Wand2, ClipboardCheck, FileText, FlaskConical } from 'lucide-react'
 
 const CORE_TOOLS = [
   {
@@ -151,36 +151,6 @@ export default function ToolsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {AI_TOOLS.map(tool => <ToolCard key={tool.href} {...tool} />)}
         </div>
-      </div>
-
-      {/* Featured course */}
-      <div className="mb-6">
-        <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">Guided Course</h2>
-        <Link
-          href="/dashboard/ai-toolkit"
-          className="group glass rounded-2xl p-6 flex items-start gap-4 hover:shadow-2xl hover:shadow-primary/8 hover:-translate-y-1 transition-all duration-300 block"
-        >
-          <div className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 bg-gradient-to-br from-primary/20 to-accent/10 group-hover:from-primary/30 group-hover:to-accent/15 transition-all duration-300">
-            <Bot className="w-5 h-5 text-primary" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-2 flex-wrap">
-              <h3 className="font-bold text-base tracking-tight group-hover:text-primary transition-colors">The AI-Empowered Educator</h3>
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide bg-primary text-primary-foreground px-2 py-0.5 rounded-full">
-                <Sparkles className="w-3 h-3" /> New
-              </span>
-            </div>
-            <p className="text-muted-foreground text-sm leading-relaxed mb-3">
-              A 5-module course on mastering Gemini, NotebookLM, and Google Classroom for CBC delivery, from Pre-Primary to Senior School. 22 hours, 15+ copy-ready prompt templates, grounded in KICD and KNEC.
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {['Gemini', 'NotebookLM', 'Google Classroom', 'KNEC-aligned'].map(t => (
-                <span key={t} className="text-xs px-2.5 py-1 rounded-full bg-muted text-muted-foreground font-medium">{t}</span>
-              ))}
-            </div>
-          </div>
-          <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all duration-200 shrink-0 mt-1" />
-        </Link>
       </div>
 
       <p className="text-xs text-muted-foreground mt-6 text-center">

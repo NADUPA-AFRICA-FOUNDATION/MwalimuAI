@@ -1,5 +1,6 @@
 import React from 'react'
 import { Lightbulb, Sparkles, Users, ClipboardCheck } from 'lucide-react'
+import { PromptBlock } from '@/components/prompt-block'
 
 /**
  * Reading-content renderer for the lesson player.
@@ -40,6 +41,7 @@ export function renderInline(text: string): React.ReactNode {
 export function stripMd(text: string): string {
   return text
     .split('\n')
+    .filter(line => !line.trim().startsWith('```'))  // drop code-fence markers
     .map(line => line
       .replace(/^#{2,3}\s+/, '')
       .replace(/^>>\s*(KEY|THINK|CASE|TRY):\s*/i, '')
@@ -94,6 +96,7 @@ type Block =
   | { kind: 'ol'; items: string[] }
   | { kind: 'table'; rows: string[][]; hasHeader: boolean }
   | { kind: 'callout'; type: CalloutType; lines: string[] }
+  | { kind: 'code'; code: string }
 
 function parseBlocks(text: string): Block[] {
   const blocks: Block[] = []
@@ -104,6 +107,19 @@ function parseBlocks(text: string): Block[] {
     const line = lines[i].trim()
 
     if (line === '') { i++; continue }
+
+    // Fenced code / prompt block — capture raw lines verbatim until the close
+    if (line.startsWith('```')) {
+      const code: string[] = []
+      i++
+      while (i < lines.length && !lines[i].trim().startsWith('```')) {
+        code.push(lines[i])
+        i++
+      }
+      i++ // skip closing fence
+      blocks.push({ kind: 'code', code: code.join('\n') })
+      continue
+    }
 
     if (line.startsWith('### ')) { blocks.push({ kind: 'h3', text: line.slice(4) }); i++; continue }
     if (line.startsWith('## '))  { blocks.push({ kind: 'h2', text: line.slice(3) }); i++; continue }
@@ -161,7 +177,7 @@ function parseBlocks(text: string): Block[] {
     while (
       i < lines.length &&
       lines[i].trim() !== '' &&
-      !/^(##|###|>>|\||[-*]\s|\d+\.\s)/.test(lines[i].trim())
+      !/^(##|###|>>|\||```|[-*]\s|\d+\.\s)/.test(lines[i].trim())
     ) {
       para.push(lines[i].trim())
       i++
@@ -251,6 +267,9 @@ export function renderReading(text: string): React.ReactNode {
                 </table>
               </div>
             )
+
+          case 'code':
+            return <PromptBlock key={i} code={block.code} />
 
           case 'callout': {
             const cfg = CALLOUTS[block.type]

@@ -1,3 +1,5 @@
+import { AI_MODULES, type ToolSection as AiModuleSection } from './ai-toolkit-data'
+
 export type Track = 'core' | 'stem' | 'languages' | 'humanities' | 'leadership' | 'wellbeing'
 
 export interface Lesson {
@@ -1389,10 +1391,191 @@ These small designs, compounded across a career, create a teaching life that sus
   },
 }
 
+/* ── Program 9: The AI-Empowered Educator ──────────────────────
+   Built from the cleaned course content in lib/ai-toolkit-data.ts so the
+   walkthroughs and copy-ready prompts live in one canonical place. Each of
+   the 5 course modules becomes a LearningModule; each tool walkthrough
+   becomes a lesson whose reading embeds the explanation, a "Think deeper"
+   tip, and the copyable prompt template. */
+
+// Per-lesson metadata (key points + reflection), in module/section order.
+const AI_LESSON_META: { keyPoints: string[]; reflectionPrompt: string; reflectionPlaceholder: string }[] = [
+  // M1
+  {
+    keyPoints: ['Map Google Classroom to the KICD hierarchy: Learning Area → Strand → Sub-Strand', 'One class per Learning Area, Topics for Strands', 'A naming convention that mirrors KNEC\'s CBA records'],
+    reflectionPrompt: 'Sketch the Google Classroom structure for ONE grade you teach: which Learning Areas become classes, and which Strands become Topics? Where does your current setup differ?',
+    reflectionPlaceholder: 'Grade: ...\nClasses (Learning Areas): ...\nTopics (Strands) for one class: ...\nWhat I would change from my current setup: ...',
+  },
+  {
+    keyPoints: ['NotebookLM only answers from sources you upload, so it cannot hallucinate curriculum', 'Upload official KICD PDFs, not web summaries', 'Test grounding by asking for a specific Strand\'s Learning Outcomes'],
+    reflectionPrompt: 'Which curriculum question do you most often get wrong or have to look up? Write the exact NotebookLM prompt you would use to ground that answer in your KICD document.',
+    reflectionPlaceholder: 'A curriculum fact I am unsure of: ...\nThe document I would upload: ...\nMy grounding prompt: ...',
+  },
+  {
+    keyPoints: ['A CBC lesson plan needs SLOs, Key Inquiry Question, organisation of learning, and assessment', 'Gemini produces a full plan only when the prompt carries the KICD fields', 'Hyper-local context (county, resources) produces usable plans'],
+    reflectionPrompt: 'Run the lesson plan prompt for a real lesson next week, then critique the output: what did Gemini get right, and what did you have to change to make it truly classroom-ready?',
+    reflectionPlaceholder: 'Lesson: ...\nWhat Gemini got right: ...\nWhat I had to edit: ...\nWhy the edit mattered: ...',
+  },
+  // M2
+  {
+    keyPoints: ['AI at Early Years serves the teacher, not the learner', 'Name the local environment in every prompt for usable activities', 'Generate bilingual (English + Kiswahili) materials in seconds'],
+    reflectionPrompt: 'Generate one outdoor Environmental Activities game with the prompt, then judge it honestly: is it safe, doable with your class size, and truly using local materials? What would you adapt?',
+    reflectionPlaceholder: 'Topic: ...\nThe game Gemini produced: ...\nMy safety / class-size / materials adaptations: ...',
+  },
+  {
+    keyPoints: ['CBC builds parental engagement into assessment, especially at PP and Lower Primary', 'Home Learning Missions turn parents into evidence collectors', 'Keep posts short, simple, and bilingual for smartphone access'],
+    reflectionPrompt: 'Most of your parents read this on a basic smartphone. Draft (or generate) one Home Learning Mission and check: could a parent with Form 4 education follow it without you explaining?',
+    reflectionPlaceholder: 'The mission: ...\nWhere a parent might get confused: ...\nHow I simplified it: ...',
+  },
+  {
+    keyPoints: ['Upload the KICD PP design + BECF to create a queryable curriculum expert', 'Ask for milestones, activities, and observation checklists', 'Add your county\'s support materials for local examples'],
+    reflectionPrompt: 'What curriculum support do you most lack at your school? Write the three NotebookLM queries that would give you the fastest help, and predict what each would return.',
+    reflectionPlaceholder: 'Support I lack: ...\nQuery 1: ... (expected answer: ...)\nQuery 2: ...\nQuery 3: ...',
+  },
+  // M3
+  {
+    keyPoints: ['PBL is where CBC\'s integrated learning becomes real', 'NotebookLM finds genuine cross-subject connections a single lesson book would miss', 'Anchor projects in real Kenyan community challenges'],
+    reflectionPrompt: 'Pick a real challenge in your community (water, waste, food, road safety). Which three Learning Areas could a project on it genuinely connect, and what would learners produce for a real audience?',
+    reflectionPlaceholder: 'Community challenge: ...\nThree Learning Areas it connects: ...\nThe tangible output learners would make: ...\nThe real audience: ...',
+  },
+  {
+    keyPoints: ['KNEC\'s portal is the system of record; Classroom is your working layer', 'A private management class organises the SBA workflow by term', 'Export the Gradebook to Sheets for KNEC upload preparation'],
+    reflectionPrompt: 'How do you currently track SBAs, and where does it break down at report time? Describe the private management Classroom you would set up to make your records audit-ready.',
+    reflectionPlaceholder: 'My current SBA tracking: ...\nWhere it breaks down: ...\nMy management-Classroom structure (Topics, what I post): ...',
+  },
+  {
+    keyPoints: ['Differentiation is a CBC requirement, not a luxury', 'Gemini generates support / standard / extension versions at once', 'Show learners the full rubric to build Self-Efficacy'],
+    reflectionPrompt: 'In CBC the goal is growth, not ranking. Why does showing learners the EE descriptor (not hiding it) build their competency, and how would you introduce a three-level task without implying some learners are "lower"?',
+    reflectionPlaceholder: 'Why visible EE descriptors help: ...\nHow I would frame three levels respectfully: ...',
+  },
+  // M4
+  {
+    keyPoints: ['Gemini acts as a subject-specialist colleague for STEM teachers working alone', 'Specify language, IDE, and version to get practical CS output', 'Build problem scenarios from Kenyan industrial and agricultural contexts'],
+    reflectionPrompt: 'Generate the debugging exercise for a topic you teach, then verify every bug: does the code actually contain four bugs of escalating subtlety, and is the marking guide fair? What did you correct?',
+    reflectionPlaceholder: 'Topic: ...\nDid the four bugs hold up? ...\nWhat I corrected in the output: ...',
+  },
+  {
+    keyPoints: ['CSL is a core subject for ALL Senior School learners', 'NotebookLM synthesises news, NGO reports, government data, and textbooks', 'Upload your real local documents for authentic research'],
+    reflectionPrompt: 'Identify one local document (a chief\'s report, committee minutes, facility data) you could upload for a CSL project. What authentic research question could learners investigate from it?',
+    reflectionPlaceholder: 'Local document: ...\nThe CSL project theme: ...\nThe learner research question: ...',
+  },
+  {
+    keyPoints: ['Performance and creative work need portfolio assessment, not written tests', 'Classroom + Drive captures video, photo, and reflection evidence', 'Weekly logs build a longitudinal portfolio over three years'],
+    reflectionPrompt: 'For your Arts or Sports subject, what three evidence types would best show a learner\'s growth over a term, and how would you structure the Classroom assignments to collect them without overwhelming yourself?',
+    reflectionPlaceholder: 'Subject: ...\nThree evidence types: ...\nMy Classroom assignment structure: ...',
+  },
+  // M5
+  {
+    keyPoints: ['CBA shifts from "what does the learner know?" to "what can they do?"', 'Strong performance tasks have a real context, a real audience, and a product', 'Full KNEC rubrics span eight sub-levels (EE1 to BE2)'],
+    reflectionPrompt: 'Generate one performance task, then test it against the three qualities (authentic context, audience beyond you, a tangible product). Which quality is weakest, and how would you strengthen it?',
+    reflectionPlaceholder: 'The task: ...\nAuthentic context? ...\nAudience beyond me? ...\nA product? ...\nThe weakest quality and my fix: ...',
+  },
+  {
+    keyPoints: ['Rubrics + private comments + Gemini make feedback personal at scale', 'A Return & Resubmit policy enacts CBC\'s mastery philosophy', 'Frame feedback in competencies, not just right/wrong'],
+    reflectionPrompt: 'Rewrite a piece of feedback you recently gave so it speaks in CBC competency language and names one specific next step. How does the competency framing change what the learner hears?',
+    reflectionPlaceholder: 'My original feedback: ...\nRewritten in competency language: ...\nWhat changes for the learner: ...',
+  },
+  {
+    keyPoints: ['Your best assessments are professional assets worth banking', 'NotebookLM generates variations and audits alignment', 'A shared school bank compounds in value over time'],
+    reflectionPrompt: 'Run the KNEC alignment audit on one assessment you already use. What did it flag, and is the critique fair? What is one change you will actually make as a result?',
+    reflectionPlaceholder: 'The assessment I audited: ...\nWhat the audit flagged: ...\nIs the critique fair? ...\nThe change I will make: ...',
+  },
+]
+
+function aiReadingFor(section: AiModuleSection): string {
+  // Convert the bullet character used in the source to markdown list items so
+  // the reading renderer styles them, then append the tip and the prompt.
+  const body = section.content.replace(/\n•\s/g, '\n- ').replace(/^•\s/, '- ')
+  return [
+    body,
+    '',
+    `>> THINK: ${section.tip}`,
+    '',
+    `### Prompt template: ${section.promptTitle}`,
+    `Open ${section.tool}, paste the prompt below, and replace every [bracketed] field with your own classroom details before running it. Always review the output before using it with learners.`,
+    '',
+    '```',
+    section.prompt,
+    '```',
+  ].join('\n')
+}
+
+const aiEmpoweredEducator: Program = {
+  id: 'ai-empowered-educator',
+  title: 'The AI-Empowered Educator',
+  shortTitle: 'AI for CBC',
+  tagline: 'Master Gemini, NotebookLM & Google Classroom for CBC',
+  description: 'A practical, tool-specific course on using Google\'s AI tools to deliver CBC well, from Pre-Primary to Senior School. Learn to ground AI in authentic KICD documents, generate KNEC-aligned lesson plans and rubrics, and run digital assessment, all with copy-ready prompt templates you can use the same day.',
+  track: 'core',
+  kicdAlignment: 'Kenya National AI Strategy 2025-2030 · KICD & KNEC aligned',
+  hours: AI_MODULES.reduce((s, m) => s + m.hours, 0),
+  lessons: AI_MODULES.reduce((s, m) => s + m.sections.length, 0),
+  accent: 'accent',
+  available: true,
+  modules: AI_MODULES.map((m, mi) => ({
+    id: `m${mi + 1}`,
+    title: m.title,
+    description: m.subtitle,
+    lessons: m.sections.map((s, si) => {
+      const meta = AI_LESSON_META[AI_MODULES.slice(0, mi).reduce((a, x) => a + x.sections.length, 0) + si]
+      const cleanTitle = s.title.replace(/^[^:]+:\s*/, '') // drop "STEM:" style prefixes
+      return {
+        id: `l${si + 1}`,
+        title: s.pathway ? `${s.pathway}: ${cleanTitle}` : s.title,
+        duration: '30 min',
+        videoTitle: `${s.tool}: ${cleanTitle}`,
+        videoPoints: meta.keyPoints,
+        reading: aiReadingFor(s),
+        reflectionPrompt: meta.reflectionPrompt,
+        reflectionPlaceholder: meta.reflectionPlaceholder,
+      }
+    }),
+  })),
+  preAssessment: [
+    { id: 'q1', question: 'A teacher asks Gemini (with no documents attached) for the Grade 6 Integrated Science Learning Outcomes and pastes the answer straight into a scheme of work. What is the main risk?', options: ['Gemini is too slow for this', 'Gemini may produce plausible but incorrect curriculum details (hallucination)', 'Gemini cannot write in English', 'The answer will be too short'], correct: 1, explanation: 'Ungrounded AI can generate confident, wrong curriculum information. The course\'s core safeguard is grounding curriculum work in NotebookLM with the official KICD documents as the only sources.' },
+    { id: 'q2', question: 'Which Google tool is, by design, unable to draw on information outside the files you upload, making it the most reliable for KICD curriculum work?', options: ['Gemini', 'Google Classroom', 'NotebookLM', 'Google Search'], correct: 2, explanation: 'NotebookLM answers only from your uploaded sources. That property is exactly what prevents curriculum hallucination.' },
+    { id: 'q3', question: 'KNEC\'s Competency-Based Assessment uses four performance levels. Which list is correct, strongest to weakest?', options: ['A, B, C, D', 'EE, ME, AE, BE', 'Distinction, Credit, Pass, Fail', '1, 2, 3, 4'], correct: 1, explanation: 'Exceeding (EE), Meeting (ME), Approaching (AE), and Below (BE) Expectations, expanded into an eight-point scale from EE1 (8) to BE2 (1).' },
+    { id: 'q4', question: 'In this course\'s philosophy, what is the teacher\'s role relative to any AI output?', options: ['Trust it and deliver it directly to save time', 'Review and edit every output before it reaches learners', 'Only use AI for marking, never for planning', 'Avoid AI entirely in CBC'], correct: 1, explanation: 'AI serves the teacher; it never replaces professional judgement. Every prompt, activity, and rubric must be reviewed and edited before reaching learners.' },
+    { id: 'q5', question: 'To align Google Classroom with CBC rather than 8-4-4 thinking, you should organise it around:', options: ['One class for the whole grade, Topics for subjects', 'Learning Areas as classes, Strands as Topics', 'One class per term', 'Topics named after textbook chapters'], correct: 1, explanation: 'Mapping the platform to KICD\'s hierarchy (Learning Area, Strand, Sub-Strand) makes your Gradebook directly mappable to KNEC\'s CBA records.' },
+    { id: 'q6', question: 'Honestly, how confident are you right now using Gemini, NotebookLM, or Google Classroom to prepare CBC materials?', options: ['Very confident, I use them weekly', 'Somewhat, I have tried one of them', 'Rarely, I have heard of them but not used them for teaching', 'Not at all'], correct: 3, explanation: 'There is no wrong answer here. This question simply marks your starting point so you can see how far you have come by the post-assessment.' },
+  ],
+  postAssessment: [
+    { id: 'q1', question: 'You need a Grade 4 rubric that is faithful to the official KICD outcomes. What is the most reliable workflow?', options: ['Ask Gemini with no documents and trust it', 'Ground the outcomes in NotebookLM from the uploaded KICD design, then refine the rubric wording with Gemini', 'Search the web and copy the first result', 'Write it from memory'], correct: 1, explanation: 'Use NotebookLM for fidelity to the source document, then Gemini for fluent rubric language. Tool choice follows the job: grounding vs generation.' },
+    { id: 'q2', question: 'A colleague says "CBC means we stop using direct explanation and only do group projects." Based on this course, the best response is:', options: ['Correct, lecturing is banned in CBC', 'AI and CBC both still value clear teaching; what matters is that learners then DO something with it and produce evidence', 'CBC has no place for assessment', 'Only Senior School uses projects'], correct: 1, explanation: 'The tools reduce admin so teachers can focus on application and evidence. Explanation still matters; the shift is to what learners do with it.' },
+    { id: 'q3', question: 'Which prompt detail will most improve a Gemini Computer Science debugging exercise for your school?', options: ['Asking for "good code"', 'Specifying the exact language, IDE, and version (e.g. Python 3.x in IDLE, offline)', 'Requesting the longest possible answer', 'Telling it the learners are clever'], correct: 1, explanation: 'Precise environment specification transforms the output from theoretical to something that actually runs on your school\'s machines.' },
+    { id: 'q4', question: 'A performance task asks learners to "answer 20 recall questions about soil." Why does this fall short of CBA?', options: ['It is too long', 'It tests recall, not application to a real context with a product and audience', 'It uses the wrong font', 'Soil is not in the curriculum'], correct: 1, explanation: 'CBA asks what learners can DO with knowledge. Strong tasks have an authentic context, an audience beyond the teacher, and a tangible product.' },
+    { id: 'q5', question: 'Why is the eight-point scale (EE1 to BE2) harder to design well than a simple "harder questions = higher mark" approach?', options: ['It is not harder, just longer', 'Each level must describe genuinely different observable performance, not just more difficulty', 'It requires a computer', 'KNEC does not allow it'], correct: 1, explanation: 'Distinguishing EE from ME means describing different qualities of performance against criteria, which is the new assessment literacy the course builds.' },
+    { id: 'q6', question: 'Two teachers use Gemini for feedback. Teacher A writes "Wrong, redo it." Teacher B writes "Your problem identification was strong; revisit how you applied the formula in step 3 and show the working." Which is more CBC-aligned and why?', options: ['A, because it is shorter', 'B, because it is competency-framed, specific, and gives an actionable next step that builds Self-Efficacy', 'Neither, feedback should be a percentage', 'A, because it ranks the learner'], correct: 1, explanation: 'Competency-framed, specific, encouragement-first feedback with a clear next step builds Self-Efficacy and Learning to Learn, exactly what the course models.' },
+  ],
+  assignment: {
+    title: 'Build and Ship One Real AI-Assisted CBC Resource',
+    context: 'You have seen 15 walkthroughs and copied many prompts. Now produce one genuine, classroom-ready artifact using these tools, and reflect on the human judgement it required.',
+    task: 'Choose ONE: (a) a complete KICD-grounded lesson plan, (b) a full eight-level KNEC rubric for a performance task, or (c) a Home Learning Mission with a parent observation guide. Generate a first version with the relevant prompt, then EDIT it for your real class. Submit (350-550 words): (1) which artifact and tool you chose and why; (2) the prompt you used, including your local context; (3) the three most important edits you made to the AI\'s output and why each was necessary; (4) one limitation of the AI you noticed that a teacher must always watch for.',
+    hints: [
+      'Pick the artifact you will actually use this week, not a hypothetical one',
+      'Ground anything curriculum-specific in NotebookLM, do not trust ungrounded recall',
+      'Your edits are the assignment: they show your professional judgement, describe them precisely',
+      'Be specific about the limitation, "it was generic" is weaker than "it invented a Sub-Strand that is not in the Grade 5 design"',
+    ],
+    rubric: [
+      'Produces a genuine, classroom-ready artifact (not just a description)',
+      'Shows the actual prompt with real local context filled in',
+      'Names at least three specific, well-justified edits to the AI output',
+      'Identifies a concrete AI limitation a teacher must guard against',
+      'Reflects the course principle that AI serves, never replaces, professional judgement',
+    ],
+  },
+  certificate: {
+    subtitle: 'The AI-Empowered Educator Program',
+    skills: ['Grounding AI in KICD documents (NotebookLM)', 'CBC lesson planning with Gemini', 'KNEC-aligned digital assessment', 'Google Classroom for CBC workflows', 'Responsible, teacher-led AI practice'],
+  },
+}
+
 export const PROGRAMS: Program[] = [
   cbcFoundations,
   assessmentForLearning,
   inclusiveEducation,
+  aiEmpoweredEducator,
   stemIntegration,
   teacherWellbeing,
   languageTeaching,
@@ -1401,7 +1584,7 @@ export const PROGRAMS: Program[] = [
 ]
 
 export const TRACKS: { id: Track; label: string; count: number }[] = [
-  { id: 'core',      label: 'Core CBC',  count: 3 },
+  { id: 'core',      label: 'Core CBC',  count: 4 },
   { id: 'stem',      label: 'STEM',      count: 1 },
   { id: 'wellbeing', label: 'Wellbeing', count: 1 },
   { id: 'languages', label: 'Languages', count: 1 },
