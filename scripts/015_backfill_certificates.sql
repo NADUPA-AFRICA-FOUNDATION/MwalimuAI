@@ -4,11 +4,16 @@
 --
 -- Some certificates were issued (a serial is printed on them and stored
 -- in learning_progress.certificate_serial) before the public `certificates`
--- registry existed, or their fire-and-forget registration insert was lost.
--- Those serials return "not found" at /verify. This recreates the missing
--- registry rows from learning_progress + profiles so every issued
--- certificate verifies. The app also re-registers each user's certificates
--- on login, which keeps titles/names current going forward.
+-- registry existed, or their registration write was lost, or the registry
+-- holds a STALE serial that diverged from the one on the certificate (the
+-- serial can differ if a second device generated one before syncing).
+-- Any of these make /verify return "not found" for the printed serial.
+--
+-- The certificate the teacher holds always shows learning_progress
+-- .certificate_serial, so that is the source of truth. We upsert on
+-- (user_id, program_id) and set the registry serial to match it, also
+-- filling any blank title/name. The app re-registers on login to stay
+-- current going forward.
 -- =============================================================
 
 INSERT INTO public.certificates (serial, user_id, program_id, program_title, teacher_name, earned_at)
@@ -34,10 +39,19 @@ FROM public.learning_progress lp
 LEFT JOIN public.profiles p ON p.id = lp.user_id
 WHERE lp.certificate_serial IS NOT NULL
   AND lp.certificate_serial <> ''
-ON CONFLICT (serial) DO NOTHING;
+ON CONFLICT (user_id, program_id) DO UPDATE SET
+  -- Point the registry at the serial actually printed on the certificate
+  serial        = EXCLUDED.serial,
+  -- Fill blanks without clobbering good existing data
+  program_title = COALESCE(NULLIF(public.certificates.program_title, ''), EXCLUDED.program_title),
+  teacher_name  = COALESCE(NULLIF(public.certificates.teacher_name, ''),  EXCLUDED.teacher_name);
 
 -- ── Verify ──────────────────────────────────────────────────────
--- Counts should now match (every issued serial has a registry row):
-SELECT
-  (SELECT COUNT(*) FROM public.learning_progress WHERE certificate_serial IS NOT NULL AND certificate_serial <> '') AS issued_serials,
-  (SELECT COUNT(*) FROM public.certificates) AS registry_rows;
+-- Should return 0: every printed serial now has a matching registry row.
+SELECT COUNT(*) AS unverifiable_serials
+FROM public.learning_progress lp
+WHERE lp.certificate_serial IS NOT NULL
+  AND lp.certificate_serial <> ''
+  AND NOT EXISTS (
+    SELECT 1 FROM public.certificates c WHERE c.serial = lp.certificate_serial
+  );

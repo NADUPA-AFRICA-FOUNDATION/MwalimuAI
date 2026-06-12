@@ -163,19 +163,19 @@ function genSerial(): string {
   return `MW-${block(5)}-${block(5)}`
 }
 
-// Upsert the public verification registry row for a certificate. Keyed by the
-// serial (the table's primary key), so it both creates the row and backfills
-// teacher_name/program_title onto an existing row. Name/title are only written
-// when non-empty, so a later call with real values fixes a row first created
-// without them (e.g. when the cert was earned on the assessment screen), and a
-// call without them never blanks good data.
+// Upsert the public verification registry row for a certificate. Keyed by
+// (user_id, program_id) — there is one certificate per user per program — so
+// the row's serial always tracks the one printed on the holder's certificate,
+// even if an earlier registration stored a different (stale) serial. Name and
+// title are only written when non-empty, so a later call with real values fills
+// blanks, and a call without them never clobbers good data.
 function registerCertificate(serial: string, programId: string, teacherName: string, programTitle: string) {
   if (!_userId) return
   const row: Record<string, unknown> = { serial, user_id: _userId, program_id: programId }
   if (programTitle) row.program_title = programTitle
   if (teacherName)  row.teacher_name  = teacherName
   const supabase = createClient()
-  trackWrite(supabase.from('certificates').upsert(row, { onConflict: 'serial' }))
+  trackWrite(supabase.from('certificates').upsert(row, { onConflict: 'user_id,program_id' }))
 }
 
 /**
